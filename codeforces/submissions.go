@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -91,8 +92,7 @@ func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
 			subArg, _ := Parse(probLk)
 			subArg.setContestClass()
 
-			if (len(arg.Contest) == 0 || arg.Contest == subArg.Contest) &&
-				(len(arg.Problem) == 0 || arg.Problem == subArg.Problem) {
+			if len(arg.Problem) == 0 || strings.EqualFold(arg.Problem, subArg.Problem) {
 				// parse various details
 				isJudging := getAttr(sub, "td:nth-of-type(6)", "waiting") == "true"
 				when := parseTime(getText(sub, "td:nth-of-type(2)"))

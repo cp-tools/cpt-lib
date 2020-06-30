@@ -33,6 +33,11 @@ type (
 		Terms    string
 		Register func() error
 	}
+
+	/*
+		// Dashboard holds details from contest dashboard
+		Dashboard struct {}
+	*/
 )
 
 // Contest registration status of current session.
@@ -44,7 +49,7 @@ const (
 )
 
 func (arg Args) countdownPage() (link string) {
-	if arg.Class == "group" {
+	if arg.Class == ClassGroup {
 		link = fmt.Sprintf("%v/group/%v/contest/%v/countdown",
 			hostURL, arg.Group, arg.Contest)
 	} else {
@@ -150,7 +155,7 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 			name := cont.Find("td:nth-of-type(1)")
 			name.Find("a").Remove()
 
-			if len(arg.Contest) != 0 && arg.Contest != contArg.Contest {
+			if len(arg.Contest) != 0 && strings.EqualFold(arg.Contest, contArg.Contest) {
 				// skip current contest data
 				return true
 			}
@@ -247,6 +252,12 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 	}
 	return contests, nil
 }
+
+// @todo Add GetDashboard functionality
+// @body Extract and return problems in contest, time to
+// @body contest end (if any), and announcements.
+
+/*func (arg Args) GetDashboard() (Dashboard, error) {}*/
 
 // RegisterForContest parses and returns registration terms
 // of contest specified in args.

@@ -84,32 +84,28 @@ func (arg Args) GetProblems() ([]Problem, error) {
 		}
 		probArg.setContestClass()
 
-		// append if matches criteria
-		if (len(arg.Contest) == 0 || arg.Contest == probArg.Contest) &&
-			(len(arg.Problem) == 0 || arg.Problem == probArg.Problem) {
-			// sample tests of problem
-			var sampleTests []SampleTest
-			inp, out := prob.Find(".input"), prob.Find(".output")
-			for i := 0; i < inp.Length(); i++ {
-				inpStr, _ := inp.Find("pre").Eq(i).Html()
-				outStr, _ := out.Find("pre").Eq(i).Html()
-				sampleTests = append(sampleTests, SampleTest{
-					Input:  clean(inpStr) + "\n",
-					Output: clean(outStr) + "\n",
-				})
-			}
-
-			header := prob.Find(".header")
-			probs = append(probs, Problem{
-				Name:        getText(header, ".title"),
-				TimeLimit:   getText(header, ".time-limit"),
-				MemoryLimit: getText(header, ".memory-limit"),
-				InpStream:   getText(header, ".input-file"),
-				OutStream:   getText(header, ".output-file"),
-				SampleTests: sampleTests,
-				Arg:         probArg,
+		// sample tests of problem
+		var sampleTests []SampleTest
+		inp, out := prob.Find(".input"), prob.Find(".output")
+		for i := 0; i < inp.Length(); i++ {
+			inpStr, _ := inp.Find("pre").Eq(i).Html()
+			outStr, _ := out.Find("pre").Eq(i).Html()
+			sampleTests = append(sampleTests, SampleTest{
+				Input:  clean(inpStr) + "\n",
+				Output: clean(outStr) + "\n",
 			})
 		}
+
+		header := prob.Find(".header")
+		probs = append(probs, Problem{
+			Name:        getText(header, ".title"),
+			TimeLimit:   getText(header, ".time-limit"),
+			MemoryLimit: getText(header, ".memory-limit"),
+			InpStream:   getText(header, ".input-file"),
+			OutStream:   getText(header, ".output-file"),
+			SampleTests: sampleTests,
+			Arg:         probArg,
+		})
 	})
 	return probs, nil
 }

@@ -85,7 +85,8 @@ func Parse(str string) (Args, error) {
 					result[name] = match[i]
 				}
 			}
-
+			// convert to lowercase (default config)
+			result["prob"] = strings.ToLower(result["prob"])
 			arg := Args{
 				Contest: result["cont"],
 				Problem: result["prob"],
