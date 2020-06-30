@@ -30,7 +30,7 @@ type (
 func (arg Args) problemsPage() (link string) {
 	// problem specified
 	if len(arg.Problem) != 0 {
-		if arg.Class == "group" {
+		if arg.Class == ClassGroup {
 			link = fmt.Sprintf("%v/group/%v/contest/%v/problem/%v",
 				hostURL, arg.Group, arg.Contest, arg.Problem)
 		} else {
@@ -38,7 +38,7 @@ func (arg Args) problemsPage() (link string) {
 				hostURL, arg.Class, arg.Contest, arg.Problem)
 		}
 	} else {
-		if arg.Class == "group" {
+		if arg.Class == ClassGroup {
 			link = fmt.Sprintf("%v/group/%v/contest/%v/problems",
 				hostURL, arg.Group, arg.Contest)
 		} else {

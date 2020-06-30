@@ -28,7 +28,7 @@ type (
 func (arg Args) submissionsPage(handle string) (link string) {
 	// contest specified
 	if len(arg.Contest) != 0 {
-		if arg.Class == "group" {
+		if arg.Class == ClassGroup {
 			link = fmt.Sprintf("%v/submissions/%v/group/%v/contest/%v",
 				hostURL, handle, arg.Group, arg.Contest)
 		} else {
@@ -43,7 +43,7 @@ func (arg Args) submissionsPage(handle string) (link string) {
 }
 
 func (sub Submission) sourceCodePage() (link string) {
-	if sub.Arg.Class == "group" {
+	if sub.Arg.Class == ClassGroup {
 		link = fmt.Sprintf("%v/group/%v/contest/%v/submission/%v",
 			hostURL, sub.Arg.Group, sub.Arg.Contest, sub.ID)
 	} else {
