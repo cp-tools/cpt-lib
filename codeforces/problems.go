@@ -23,8 +23,17 @@ type (
 		InpStream   string
 		OutStream   string
 		SampleTests []SampleTest
+		SolveCount  int
+		SolveStatus int
 		Arg         Args
 	}
+)
+
+// Different values of 'SolveStatus'.
+const (
+	SolveAccepted     = 1
+	SolveRejected     = 0
+	SolveNotAttempted = -1
 )
 
 func (arg Args) problemsPage() (link string) {
@@ -56,6 +65,9 @@ func (arg Args) problemsPage() (link string) {
 // In some older contests, complete problemset page is not supported.
 // Preferably fallback to parsing individual problems if entire parsing
 // fails.
+//
+// Doesn't fetch 'SolveStatus' and 'SolveCount' of problem.
+// Use GetDashboard() to fetch these info fields.
 func (arg Args) GetProblems() ([]Problem, error) {
 	if len(arg.Contest) == 0 {
 		return nil, ErrInvalidSpecifier

@@ -34,10 +34,22 @@ type (
 		Register func() error
 	}
 
-	/*
-		// Dashboard holds details from contest dashboard
-		Dashboard struct {}
-	*/
+	// QuestionAnswer maps to the table beneath
+	// problems row in the contest dashboard.
+	// Holds QA in specified contest.
+	QuestionAnswer struct {
+		ID       string
+		Party    string
+		When     time.Time
+		Question string
+		Answer   string
+	}
+
+	// Dashboard holds details from contest dashboard.
+	Dashboard struct {
+		Problem        []Problem
+		QuestionAnswer []QuestionAnswer
+	}
 )
 
 // Contest registration status of current session.
@@ -71,6 +83,17 @@ func (arg Args) contestsPage() (link string) {
 	} else {
 		link = fmt.Sprintf("%v/%vs?complete=true",
 			hostURL, arg.Class)
+	}
+	return
+}
+
+func (arg Args) dashboardPage() (link string) {
+	if arg.Class == ClassGroup {
+		link = fmt.Sprintf("%v/group/%v/contest/%v",
+			hostURL, arg.Group, arg.Contest)
+	} else {
+		link = fmt.Sprintf("%v/%v/%v",
+			hostURL, arg.Class, arg.Contest)
 	}
 	return
 }
@@ -155,7 +178,7 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 			name := cont.Find("td:nth-of-type(1)")
 			name.Find("a").Remove()
 
-			if len(arg.Contest) != 0 && strings.EqualFold(arg.Contest, contArg.Contest) {
+			if len(arg.Contest) != 0 && arg.Contest == contArg.Contest {
 				// skip current contest data
 				return true
 			}
@@ -253,11 +276,100 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 	return contests, nil
 }
 
-// @todo Add GetDashboard functionality
-// @body Extract and return problems in contest, time to
-// @body contest end (if any), and announcements.
+// GetDashboard parses and returns useful info from
+// contest dashboard page.
+func (arg Args) GetDashboard() (Dashboard, error) {
+	if len(arg.Contest) == 0 {
+		return Dashboard{}, ErrInvalidSpecifier
+	}
 
-/*func (arg Args) GetDashboard() (Dashboard, error) {}*/
+	link := arg.dashboardPage()
+	resp, err := SessCln.Get(link)
+	if err != nil {
+		return Dashboard{}, err
+	}
+	body, msg := parseResp(resp)
+	if len(msg) != 0 {
+		return Dashboard{}, fmt.Errorf(msg)
+	}
+
+	dashboard := Dashboard{}
+	// extract problems data
+	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	probTable := doc.Find(".problems tr").Has("td")
+	probTable.Each(func(_ int, prob *goquery.Selection) {
+		// what do I do if there is an error?
+		probArg, _ := Parse(hostURL + getAttr(prob, "td:nth-of-type(1) a", "href"))
+
+		// append if matches criteria
+		if len(arg.Problem) == 0 || arg.Problem == probArg.Problem {
+			// extract timelimit/memory limit from problem data
+			conSel := prob.Find("td:nth-of-type(2) .notice")
+			constraints := clean(conSel.Contents().Last().Text())
+
+			// extract inp/out stream data.
+			dataStream := getText(conSel, "div")
+			var inpStream, outStream string
+			if dataStream == "standard input/output" {
+				inpStream = "standard input"
+				outStream = "standard output"
+			} else {
+				inpStream = strings.Split(dataStream, "/")[0]
+				outStream = strings.Split(dataStream, "/")[1]
+			}
+
+			// extract solve status
+			var solveStatus int
+			if prob.AttrOr("class", "") == "accepted-problem" {
+				solveStatus = SolveAccepted
+			} else if prob.AttrOr("class", "") == "rejected-problem" {
+				solveStatus = SolveRejected
+			} else {
+				solveStatus = SolveNotAttempted
+			}
+
+			// extract solve count
+			var solveCount int
+			sc := getText(prob, "td:nth-of-type(4)")
+			if len(sc) > 1 {
+				// remove the 'x' prefix
+				solveCount, _ = strconv.Atoi(sc[1:])
+			}
+
+			dashboard.Problem = append(dashboard.Problem, Problem{
+				Name:        getText(prob, "td:nth-of-type(2) a"),
+				TimeLimit:   strings.Split(constraints, ", ")[0],
+				MemoryLimit: strings.Split(constraints, ", ")[1],
+				InpStream:   inpStream,
+				OutStream:   outStream,
+				SolveCount:  solveCount,
+				SolveStatus: solveStatus,
+				Arg:         probArg,
+			})
+		}
+	})
+
+	// extract question/answers data
+	queAnsTable := doc.Find(".problem-questions-table tr").Has("td")
+	queAnsTable.Each(func(_ int, queAns *goquery.Selection) {
+		// convert time string to time (different format from rest)
+		convTime := func(str string) time.Time {
+			const fmtTime = "2006-01-02 15:04:05 Z07:00"
+			raw := fmt.Sprintf("%v +03:00", str)
+			tm, _ := time.Parse(fmtTime, raw)
+			return tm.Local()
+		}
+
+		dashboard.QuestionAnswer = append(dashboard.QuestionAnswer, QuestionAnswer{
+			ID:       getText(queAns, "td:nth-of-type(1)"),
+			Party:    getText(queAns, "td:nth-of-type(2)"),
+			When:     convTime(getText(queAns, "td:nth-of-type(3)")),
+			Question: getText(queAns, "td:nth-of-type(4)"),
+			Answer:   getText(queAns, "td:nth-of-type(5)"),
+		})
+	})
+	return dashboard, nil
+}
 
 // RegisterForContest parses and returns registration terms
 // of contest specified in args.
