@@ -175,14 +175,14 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 					return false
 				}
 
-				var description []string
+				description := []string{}
 				cont.Find("td:nth-of-type(5) .small").Each(func(_ int, desc *goquery.Selection) {
 					description = append(description, clean(desc.Text()))
 				})
 
 				contests = append(contests, Contest{
 					Name:        clean(name.Text()),
-					Writers:     nil,
+					Writers:     []string{},
 					StartTime:   startTime,
 					Duration:    dur,
 					RegCount:    RegistrationNotExists,
@@ -201,14 +201,20 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 				}
 
 				writers := strings.Split(getText(cont, "td:nth-of-type(2)"), "\n")
+				if len(writers[0]) == 0 {
+					// fix problem when no writers given
+					writers = []string{}
+				}
 
 				// find registration state in contest
 				status := cont.Find("td:nth-of-type(6)")
 				status.Find(".countdown").Remove()
 				var regStatus, regCount int
+				description := []string{}
 				if arg.Class == ClassGym {
 					regStatus = RegistrationNotExists
 					regCount = RegistrationNotExists
+					description = append(description, clean(status.Text()))
 				} else {
 					// extract registration count
 					cntStr := getText(cont, ".contestParticipantCountLinkMargin")
@@ -232,7 +238,7 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 					Duration:    dur,
 					RegCount:    regCount,
 					RegStatus:   regStatus,
-					Description: nil,
+					Description: description,
 					Arg:         contArg,
 				})
 			}
