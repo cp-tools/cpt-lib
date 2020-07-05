@@ -77,12 +77,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	table := doc.Find(".problemindexholder")
 	table.Each(func(_ int, prob *goquery.Selection) {
-		probArg := Args{
-			Contest: arg.Contest,
-			Group:   arg.Group,
-			Problem: prob.AttrOr("problemindex", ""),
-		}
-		probArg.setContestClass()
+		probArg, _ := Parse(arg.Group + arg.Contest + prob.AttrOr("problemindex", ""))
 
 		// sample tests of problem
 		var sampleTests []SampleTest
@@ -99,10 +94,10 @@ func (arg Args) GetProblems() ([]Problem, error) {
 		header := prob.Find(".header")
 		probs = append(probs, Problem{
 			Name:        getText(header, ".title"),
-			TimeLimit:   getText(header, ".time-limit"),
-			MemoryLimit: getText(header, ".memory-limit"),
-			InpStream:   getText(header, ".input-file"),
-			OutStream:   getText(header, ".output-file"),
+			TimeLimit:   clean(header.Find(".time-limit").Contents().Last().Text()),
+			MemoryLimit: clean(header.Find(".memory-limit").Contents().Last().Text()),
+			InpStream:   clean(header.Find(".input-file").Contents().Last().Text()),
+			OutStream:   clean(header.Find(".output-file").Contents().Last().Text()),
 			SampleTests: sampleTests,
 			Arg:         probArg,
 		})

@@ -35,8 +35,11 @@ func clean(str string) string {
 	// remove extra whitespace after \n
 	re := regexp.MustCompile(`\n\s+`)
 	str = re.ReplaceAllString(str, "\n")
+	// remove extra whitespaces
+	re = regexp.MustCompile(` +`)
+	str = re.ReplaceAllString(str, " ")
 	// replace non-ascii with space
-	re = regexp.MustCompile("[[:^ascii:]]")
+	re = regexp.MustCompile(`[\x00\x08\x0B\x0C\x0E-\x1F]+`)
 	return re.ReplaceAllString(str, " ")
 }
 
