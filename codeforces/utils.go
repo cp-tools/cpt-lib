@@ -38,8 +38,8 @@ func clean(str string) string {
 	// remove extra whitespaces
 	re = regexp.MustCompile(` +`)
 	str = re.ReplaceAllString(str, " ")
-	// replace non-ascii with space
-	re = regexp.MustCompile(`[\x00\x08\x0B\x0C\x0E-\x1F]+`)
+	// replace any space character space
+	re = regexp.MustCompile(`\p{Z}`)
 	return re.ReplaceAllString(str, " ")
 }
 

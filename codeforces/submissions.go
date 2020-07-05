@@ -29,6 +29,7 @@ func (arg Args) submissionsPage(handle string) (link string) {
 	// contest specified
 	if len(arg.Contest) != 0 {
 		if arg.Class == ClassGroup {
+			// does this even work?!
 			link = fmt.Sprintf("%v/submissions/%v/group/%v/contest/%v",
 				hostURL, handle, arg.Group, arg.Contest)
 		} else {
