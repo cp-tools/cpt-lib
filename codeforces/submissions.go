@@ -29,6 +29,7 @@ func (arg Args) submissionsPage(handle string) (link string) {
 	// contest specified
 	if len(arg.Contest) != 0 {
 		if arg.Class == ClassGroup {
+			// does this even work?!
 			link = fmt.Sprintf("%v/submissions/%v/group/%v/contest/%v",
 				hostURL, handle, arg.Group, arg.Contest)
 		} else {
@@ -74,22 +75,11 @@ func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
 	var submissions []Submission
 	pages := findPagination(body)
 	for c := 1; c <= pages; c++ {
-		cLink := fmt.Sprintf("%v/page/%d", link, c)
-		resp, err = SessCln.Get(cLink)
-		if err != nil {
-			return nil, err
-		}
-		body, msg = parseResp(resp)
-		if len(msg) != 0 {
-			return nil, fmt.Errorf(msg)
-		}
-
 		doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
 		table := doc.Find("tr[data-submission-id]")
 		table.Each(func(_ int, sub *goquery.Selection) {
 			probLk := hostURL + getAttr(sub, "td:nth-of-type(4) a", "href")
 			subArg, _ := Parse(probLk)
-			subArg.setContestClass()
 
 			if len(arg.Problem) == 0 || arg.Problem == subArg.Problem {
 				// parse various details
@@ -111,6 +101,17 @@ func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
 				})
 			}
 		})
+		if c+1 <= pages {
+			cLink := fmt.Sprintf("%v/page/%d", link, c+1)
+			resp, err = SessCln.Get(cLink)
+			if err != nil {
+				return nil, err
+			}
+			body, msg = parseResp(resp)
+			if len(msg) != 0 {
+				return nil, fmt.Errorf(msg)
+			}
+		}
 	}
 	return submissions, nil
 }

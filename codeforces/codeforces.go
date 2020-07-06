@@ -59,8 +59,8 @@ func Parse(str string) (Args, error) {
 		valRx = []string{
 			`codeforces.com\/` + rxClass + `\/` + rxCont + `$`,
 			`codeforces.com\/` + rxClass + `\/` + rxCont + `\/problem\/` + rxProb + `$`,
-			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + rxCont + `$`,
-			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + rxCont + `\/problem\/` + rxProb + `$`,
+			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + `contest` + `\/` + rxCont + `$`,
+			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + `contest` + `\/` + rxCont + `\/problem\/` + rxProb + `$`,
 
 			`^\s*` + rxCont + `$`,
 			`^\s*` + rxCont + `\s*` + rxProb + `$`,

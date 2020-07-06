@@ -156,30 +156,20 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 	var contests []Contest
 	pages := findPagination(body)
 	for c := 1; c <= pages; c++ {
-		cLink := fmt.Sprintf("%v/page/%d", link, c)
-		resp, err = SessCln.Get(cLink)
-		if err != nil {
-			return nil, err
-		}
-		body, msg = parseResp(resp)
-		if len(msg) != 0 {
-			return nil, fmt.Errorf(msg)
-		}
-
 		isOver := false
 		doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
 		table := doc.Find("tr[data-contestid]")
 		table.EachWithBreak(func(_ int, cont *goquery.Selection) bool {
 			// extract contest args from html attr label
-			contArg, _ := Parse(arg.Group + " " + cont.AttrOr("tr[data-contestid]", ""))
-			contArg.setContestClass()
+			contArg, _ := Parse(clean(arg.Group + cont.AttrOr("data-contestid", "")))
 
 			// remove links from contest name
 			name := cont.Find("td:nth-of-type(1)")
 			name.Find("a").Remove()
 
-			if len(arg.Contest) != 0 && arg.Contest == contArg.Contest {
+			if len(arg.Contest) != 0 && arg.Contest != contArg.Contest {
 				// skip current contest data
+				// required because of selection of group contest
 				return true
 			}
 
@@ -208,14 +198,14 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 					return false
 				}
 
-				var description []string
+				description := []string{}
 				cont.Find("td:nth-of-type(5) .small").Each(func(_ int, desc *goquery.Selection) {
 					description = append(description, clean(desc.Text()))
 				})
 
 				contests = append(contests, Contest{
 					Name:        clean(name.Text()),
-					Writers:     nil,
+					Writers:     []string{},
 					StartTime:   startTime,
 					Duration:    dur,
 					RegCount:    RegistrationNotExists,
@@ -234,18 +224,26 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 				}
 
 				writers := strings.Split(getText(cont, "td:nth-of-type(2)"), "\n")
+				if len(writers[0]) == 0 {
+					// fix problem when no writers given
+					writers = []string{}
+				}
 
 				// find registration state in contest
 				status := cont.Find("td:nth-of-type(6)")
 				status.Find(".countdown").Remove()
 				var regStatus, regCount int
+				description := []string{}
 				if arg.Class == ClassGym {
 					regStatus = RegistrationNotExists
 					regCount = RegistrationNotExists
+					description = append(description, clean(status.Text()))
 				} else {
 					// extract registration count
 					cntStr := getText(cont, ".contestParticipantCountLinkMargin")
-					regCount, _ = strconv.Atoi(cntStr)
+					if len(cntStr) > 1 {
+						regCount, _ = strconv.Atoi(cntStr[1:])
+					}
 					// extract registration status
 					if status.Find(".welldone").Length() != 0 {
 						regStatus = RegistrationDone
@@ -263,7 +261,7 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 					Duration:    dur,
 					RegCount:    regCount,
 					RegStatus:   regStatus,
-					Description: nil,
+					Description: description,
 					Arg:         contArg,
 				})
 			}
@@ -271,6 +269,18 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 		})
 		if isOver == true {
 			break
+		}
+
+		if c+1 <= pages {
+			cLink := fmt.Sprintf("%v/page/%d", link, c+1)
+			resp, err = SessCln.Get(cLink)
+			if err != nil {
+				return nil, err
+			}
+			body, msg = parseResp(resp)
+			if len(msg) != 0 {
+				return nil, fmt.Errorf(msg)
+			}
 		}
 	}
 	return contests, nil

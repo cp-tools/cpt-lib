@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -89,12 +90,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	table := doc.Find(".problemindexholder")
 	table.Each(func(_ int, prob *goquery.Selection) {
-		probArg := Args{
-			Contest: arg.Contest,
-			Group:   arg.Group,
-			Problem: prob.AttrOr("problemindex", ""),
-		}
-		probArg.setContestClass()
+		probArg, _ := Parse(arg.Group + arg.Contest + prob.AttrOr("problemindex", ""))
 
 		// sample tests of problem
 		var sampleTests []SampleTest
@@ -111,10 +107,10 @@ func (arg Args) GetProblems() ([]Problem, error) {
 		header := prob.Find(".header")
 		probs = append(probs, Problem{
 			Name:        getText(header, ".title"),
-			TimeLimit:   getText(header, ".time-limit"),
-			MemoryLimit: getText(header, ".memory-limit"),
-			InpStream:   getText(header, ".input-file"),
-			OutStream:   getText(header, ".output-file"),
+			TimeLimit:   clean(header.Find(".time-limit").Contents().Last().Text()),
+			MemoryLimit: clean(header.Find(".memory-limit").Contents().Last().Text()),
+			InpStream:   clean(header.Find(".input-file").Contents().Last().Text()),
+			OutStream:   clean(header.Find(".output-file").Contents().Last().Text()),
 			SampleTests: sampleTests,
 			Arg:         probArg,
 		})
@@ -167,9 +163,18 @@ func (arg Args) SubmitSolution(langID string, source string) error {
 		return err
 	}
 
-	_, msg = parseResp(resp)
-	if len(msg) != 0 {
-		return fmt.Errorf(msg)
+	body, msg = parseResp(resp)
+	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	if msg1 := getText(doc.Selection, ".error.for__source"); len(msg1) != 0 {
+		// static error message (exact submission done before)
+		return fmt.Errorf(msg1)
 	}
-	return nil
+	// successful submission should have message :
+	// "Solution to the problem X has been submitted successfully"
+	if strings.EqualFold(msg, "Solution to the problem "+arg.Problem+" has been submitted successfully") {
+		// submission successful!!!
+		return nil
+	}
+
+	return fmt.Errorf(msg)
 }
