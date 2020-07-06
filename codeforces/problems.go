@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -150,9 +151,18 @@ func (arg Args) SubmitSolution(langID string, source string) error {
 		return err
 	}
 
-	_, msg = parseResp(resp)
-	if len(msg) != 0 {
-		return fmt.Errorf(msg)
+	body, msg = parseResp(resp)
+	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	if msg1 := getText(doc.Selection, ".error.for__source"); len(msg1) != 0 {
+		// static error message (exact submission done before)
+		return fmt.Errorf(msg1)
 	}
-	return nil
+	// successful submission should have message :
+	// "Solution to the problem X has been submitted successfully"
+	if strings.EqualFold(msg, "Solution to the problem "+arg.Problem+" has been submitted successfully") {
+		// submission successful!!!
+		return nil
+	}
+
+	return fmt.Errorf(msg)
 }

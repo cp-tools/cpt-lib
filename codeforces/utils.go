@@ -38,8 +38,8 @@ func clean(str string) string {
 	// remove extra whitespaces
 	re = regexp.MustCompile(` +`)
 	str = re.ReplaceAllString(str, " ")
-	// replace non-ascii with space
-	re = regexp.MustCompile(`[\x00\x08\x0B\x0C\x0E-\x1F]+`)
+	// replace any space character space
+	re = regexp.MustCompile(`\p{Z}`)
 	return re.ReplaceAllString(str, " ")
 }
 
@@ -83,6 +83,8 @@ func findPagination(body []byte) int {
 	return num
 }
 
+// if the time string is invalid, returns time corresponding to
+// the start of time => (1 Jan 1970 00:00)
 func parseTime(str string) time.Time {
 	// date-time format on codeforces
 	const ruTime = "02.01.2006 15:04 Z07:00"
@@ -91,9 +93,13 @@ func parseTime(str string) time.Time {
 	raw := fmt.Sprintf("%v +03:00", str)
 	tm, err := time.Parse(enTime, raw)
 	if err != nil {
-		tm, _ = time.Parse(ruTime, raw)
+		tm, err = time.Parse(ruTime, raw)
+		if err != nil {
+			// set to the beginning of time
+			tm = time.Unix(0, 0)
+		}
 	}
-	return tm.Local()
+	return tm.UTC()
 }
 
 // genRandomString generates a random string of length n.
