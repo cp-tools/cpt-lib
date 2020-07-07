@@ -34,10 +34,14 @@ type (
 		Register func() error
 	}
 
-	/*
-		// Dashboard holds details from contest dashboard
-		Dashboard struct {}
-	*/
+	// Dashboard holds details from contest dashboard.
+	Dashboard struct {
+		Name      string
+		Problem   []Problem
+		Countdown time.Duration
+		// href link => description
+		Material map[string]string
+	}
 )
 
 // Contest registration status of current session.
@@ -71,6 +75,17 @@ func (arg Args) contestsPage() (link string) {
 	} else {
 		link = fmt.Sprintf("%v/%vs?complete=true",
 			hostURL, arg.Class)
+	}
+	return
+}
+
+func (arg Args) dashboardPage() (link string) {
+	if arg.Class == ClassGroup {
+		link = fmt.Sprintf("%v/group/%v/contest/%v",
+			hostURL, arg.Group, arg.Contest)
+	} else {
+		link = fmt.Sprintf("%v/%v/%v",
+			hostURL, arg.Class, arg.Contest)
 	}
 	return
 }
@@ -263,11 +278,100 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 	return contests, nil
 }
 
-// @todo Add GetDashboard functionality
-// @body Extract and return problems in contest, time to
-// @body contest end (if any), and announcements.
+// GetDashboard parses and returns useful info from
+// contest dashboard page.
+func (arg Args) GetDashboard() (Dashboard, error) {
+	if len(arg.Contest) == 0 {
+		return Dashboard{}, ErrInvalidSpecifier
+	}
 
-/*func (arg Args) GetDashboard() (Dashboard, error) {}*/
+	link := arg.dashboardPage()
+	resp, err := SessCln.Get(link)
+	if err != nil {
+		return Dashboard{}, err
+	}
+	body, msg := parseResp(resp)
+	if len(msg) != 0 {
+		return Dashboard{}, fmt.Errorf(msg)
+	}
+
+	dashboard := Dashboard{}
+	dashboard.Material = make(map[string]string)
+
+	// extraction begins here!!
+	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	// extract contest name
+	dashboard.Name = getText(doc.Selection, ".rtable th")
+	// extract countdown to contest end
+	if str := getText(doc.Selection, ".countdown"); len(str) != 0 {
+		var h, m, s int
+		fmt.Sscanf(str, "%d:%d:%d", &h, &m, &s)
+		dashboard.Countdown = time.Duration(h*3600+m*60+s) * time.Second
+	} else {
+		dashboard.Countdown = time.Second * 0
+	}
+
+	// extract problems data
+	probTable := doc.Find(".problems tr").Has("td")
+	probTable.Each(func(_ int, prob *goquery.Selection) {
+		// what do I do if there is an error?
+		probArg, _ := Parse(hostURL + getAttr(prob, "td:nth-of-type(1) a", "href"))
+
+		// append if matches criteria
+		if len(arg.Problem) == 0 || arg.Problem == probArg.Problem {
+			// extract timelimit/memory limit from problem data
+			conSel := prob.Find("td:nth-of-type(2) .notice")
+			constraints := clean(conSel.Contents().Last().Text())
+
+			// extract inp/out stream data.
+			dataStream := getText(conSel, "div")
+			var inpStream, outStream string
+			if dataStream == "standard input/output" {
+				inpStream = "standard input"
+				outStream = "standard output"
+			} else {
+				inpStream = strings.Split(dataStream, "/")[0]
+				outStream = strings.Split(dataStream, "/")[1]
+			}
+
+			// extract solve status
+			var solveStatus int
+			if prob.AttrOr("class", "") == "accepted-problem" {
+				solveStatus = SolveAccepted
+			} else if prob.AttrOr("class", "") == "rejected-problem" {
+				solveStatus = SolveRejected
+			} else {
+				solveStatus = SolveNotAttempted
+			}
+
+			// extract solve count
+			var solveCount int
+			sc := getText(prob, "td:nth-of-type(4)")
+			if len(sc) > 1 {
+				// remove the 'x' prefix
+				solveCount, _ = strconv.Atoi(sc[1:])
+			}
+
+			dashboard.Problem = append(dashboard.Problem, Problem{
+				Name:        getText(prob, "td:nth-of-type(2) a"),
+				TimeLimit:   strings.Split(constraints, ", ")[0],
+				MemoryLimit: strings.Split(constraints, ", ")[1],
+				InpStream:   inpStream,
+				OutStream:   outStream,
+				SolveCount:  solveCount,
+				SolveStatus: solveStatus,
+				Arg:         probArg,
+			})
+		}
+	})
+	// extract contest material
+	doc.Find("#sidebar li a").Each(func(_ int, data *goquery.Selection) {
+		href := data.AttrOr("href", "")
+		dashboard.Material[hostURL+href] = clean(data.Text())
+	})
+
+	return dashboard, nil
+}
 
 // RegisterForContest parses and returns registration terms
 // of contest specified in args.

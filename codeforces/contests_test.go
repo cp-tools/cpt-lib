@@ -316,3 +316,123 @@ func TestArgs_RegisterForContest(t *testing.T) {
 		})
 	}
 }
+
+func TestArgs_dashboardPage(t *testing.T) {
+	tests := []struct {
+		name     string
+		arg      Args
+		wantLink string
+	}{
+		{
+			name:     "Test #1",
+			arg:      Args{"1234", "", "contest", ""},
+			wantLink: "https://codeforces.com/contest/1234",
+		},
+		{
+			name:     "Test #2",
+			arg:      Args{"100001", "", "gym", ""},
+			wantLink: "https://codeforces.com/gym/100001",
+		},
+		{
+			name:     "Test #3",
+			arg:      Args{"277493", "", "group", "MEqF8b6wBT"},
+			wantLink: "https://codeforces.com/group/MEqF8b6wBT/contest/277493",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotLink := tt.arg.dashboardPage(); gotLink != tt.wantLink {
+				t.Errorf("Args.dashboardPage() = %v, want %v", gotLink, tt.wantLink)
+			}
+		})
+	}
+}
+
+func TestArgs_GetDashboard(t *testing.T) {
+	tests := []struct {
+		name    string
+		arg     Args
+		want    Dashboard
+		wantErr bool
+	}{
+		{
+			name: "Test #1",
+			arg:  Args{"4", "", "contest", ""},
+			want: Dashboard{
+				Name: "Codeforces Beta Round #4 (Div. 2 Only)",
+				Problem: []Problem{
+					{
+						Name:        "Watermelon",
+						TimeLimit:   "1 s",
+						MemoryLimit: "64 MB",
+						InpStream:   "standard input",
+						OutStream:   "standard output",
+						SampleTests: nil,
+						SolveCount:  -1, // keeps changing, ignore value
+						SolveStatus: SolveAccepted,
+						Arg:         Args{"4", "a", "contest", ""},
+					},
+					{
+						Name:        "Before an Exam",
+						TimeLimit:   "0.5 s",
+						MemoryLimit: "64 MB",
+						InpStream:   "standard input",
+						OutStream:   "standard output",
+						SampleTests: nil,
+						SolveCount:  -1, // keeps changing, ignore value
+						SolveStatus: SolveRejected,
+						Arg:         Args{"4", "b", "contest", ""},
+					},
+					{
+						Name:        "Registration System",
+						TimeLimit:   "5 s",
+						MemoryLimit: "64 MB",
+						InpStream:   "standard input",
+						OutStream:   "standard output",
+						SampleTests: nil,
+						SolveCount:  -1, // keeps changing, ignore value
+						SolveStatus: SolveNotAttempted,
+						Arg:         Args{"4", "c", "contest", ""},
+					},
+					{
+						Name:        "Mysterious Present",
+						TimeLimit:   "1 s",
+						MemoryLimit: "64 MB",
+						InpStream:   "standard input",
+						OutStream:   "standard output",
+						SampleTests: nil,
+						SolveCount:  -1, // keeps changing, ignore value
+						SolveStatus: SolveNotAttempted,
+						Arg:         Args{"4", "d", "contest", ""},
+					},
+				},
+				Countdown: 0,
+				Material: map[string]string{
+					"https://codeforces.com/blog/entry/158": "Announcement",
+					"https://codeforces.com/blog/entry/161": "Tutorial #1 (en)",
+					"https://codeforces.com/blog/entry/163": "Tutorial #2 (en)",
+					"https://codeforces.com/blog/entry/164": "Tutorial #3 (ru)",
+					"https://codeforces.com/blog/entry/178": "Tutorial #4",
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.arg.GetDashboard()
+			// set solve count to -1
+			for i := range got.Problem {
+				got.Problem[i].SolveCount = -1
+			}
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Args.GetDashboard() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Args.GetDashboard() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
