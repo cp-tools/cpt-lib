@@ -34,21 +34,13 @@ type (
 		Register func() error
 	}
 
-	// QuestionAnswer maps to the table beneath
-	// problems row in the contest dashboard.
-	// Holds QA in specified contest.
-	QuestionAnswer struct {
-		ID       string
-		Party    string
-		When     time.Time
-		Question string
-		Answer   string
-	}
-
 	// Dashboard holds details from contest dashboard.
 	Dashboard struct {
-		Problem        []Problem
-		QuestionAnswer []QuestionAnswer
+		Name      string
+		Problem   []Problem
+		Countdown time.Duration
+		// href link => description
+		Material map[string]string
 	}
 )
 
@@ -304,8 +296,22 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 	}
 
 	dashboard := Dashboard{}
-	// extract problems data
+	dashboard.Material = make(map[string]string)
+
+	// extraction begins here!!
 	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	// extract contest name
+	dashboard.Name = getText(doc.Selection, ".rtable th")
+	// extract countdown to contest end
+	if str := getText(doc.Selection, ".countdown"); len(str) != 0 {
+		var h, m, s int
+		fmt.Sscanf(str, "%d:%d:%d", &h, &m, &s)
+		dashboard.Countdown = time.Duration(h*3600+m*60+s) * time.Second
+	} else {
+		dashboard.Countdown = time.Second * 0
+	}
+
+	// extract problems data
 	probTable := doc.Find(".problems tr").Has("td")
 	probTable.Each(func(_ int, prob *goquery.Selection) {
 		// what do I do if there is an error?
@@ -358,26 +364,12 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 			})
 		}
 	})
-
-	// extract question/answers data
-	queAnsTable := doc.Find(".problem-questions-table tr").Has("td")
-	queAnsTable.Each(func(_ int, queAns *goquery.Selection) {
-		// convert time string to time (different format from rest)
-		convTime := func(str string) time.Time {
-			const fmtTime = "2006-01-02 15:04:05 Z07:00"
-			raw := fmt.Sprintf("%v +03:00", str)
-			tm, _ := time.Parse(fmtTime, raw)
-			return tm.Local()
-		}
-
-		dashboard.QuestionAnswer = append(dashboard.QuestionAnswer, QuestionAnswer{
-			ID:       getText(queAns, "td:nth-of-type(1)"),
-			Party:    getText(queAns, "td:nth-of-type(2)"),
-			When:     convTime(getText(queAns, "td:nth-of-type(3)")),
-			Question: getText(queAns, "td:nth-of-type(4)"),
-			Answer:   getText(queAns, "td:nth-of-type(5)"),
-		})
+	// extract contest material
+	doc.Find("#sidebar li a").Each(func(_ int, data *goquery.Selection) {
+		href := data.AttrOr("href", "")
+		dashboard.Material[hostURL+href] = clean(data.Text())
 	})
+
 	return dashboard, nil
 }
 
