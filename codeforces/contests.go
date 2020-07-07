@@ -116,7 +116,10 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 	}
 
 	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
-	val := doc.Find("span.countdown").Text()
+	val := doc.Find("span.countdown>span").AttrOr("title", "")
+	if len(val) == 0 {
+		val = doc.Find("span.countdown").Text()
+	}
 
 	var h, m, s int64
 	fmt.Sscanf(val, "%d:%d:%d", &h, &m, &s)
