@@ -30,13 +30,25 @@ func (arg Args) submissionsPage(handle string) (link string) {
 	if len(arg.Contest) != 0 {
 		if arg.Class == ClassGroup {
 			// does this even work?!
-			link = fmt.Sprintf("%v/submissions/%v/group/%v/contest/%v",
-				hostURL, handle, arg.Group, arg.Contest)
+			if len(handle) == 0 {
+				link = fmt.Sprintf("%v/group/%v/contest/%v/my",
+					hostURL, arg.Group, arg.Contest)
+			} else {
+				link = fmt.Sprintf("%v/submissions/%v/group/%v/contest/%v",
+					hostURL, handle, arg.Group, arg.Contest)
+			}
 		} else {
-			link = fmt.Sprintf("%v/submissions/%v/%v/%v",
-				hostURL, handle, arg.Class, arg.Contest)
+			if len(handle) == 0 {
+				link = fmt.Sprintf("%v/%v/%v/my",
+					hostURL, arg.Class, arg.Contest)
+			} else {
+				link = fmt.Sprintf("%v/submissions/%v/%v/%v",
+					hostURL, handle, arg.Class, arg.Contest)
+			}
 		}
 	} else {
+		// I think this is a bad idea....
+		handle, _ := Login("", "")
 		link = fmt.Sprintf("%v/submissions/%v",
 			hostURL, handle)
 	}
@@ -56,6 +68,8 @@ func (sub Submission) sourceCodePage() (link string) {
 
 // GetSubmissions parses and returns all submissions data in specified args
 // of given user. Fetches details of all submissions of handle if args is nil.
+//
+// If handle is not set, fetches submissions of currently active user session.
 //
 // Due to a bug on codeforces, submissions in groups are not supported.
 func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
