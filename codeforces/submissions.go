@@ -25,26 +25,16 @@ type (
 	}
 )
 
-func (arg Args) submissionsPage(handle string, isSelf bool) (link string) {
+func (arg Args) submissionsPage(handle string) (link string) {
 	// contest specified
 	if len(arg.Contest) != 0 {
 		if arg.Class == ClassGroup {
-			if isSelf == true {
-				link = fmt.Sprintf("%v/group/%v/contest/%v/my",
-					hostURL, arg.Group, arg.Contest)
-			} else {
-				// does this even work?!
-				link = fmt.Sprintf("%v/submissions/%v/group/%v/contest/%v",
-					hostURL, handle, arg.Group, arg.Contest)
-			}
+			// does this even work?!
+			link = fmt.Sprintf("%v/submissions/%v/group/%v/contest/%v",
+				hostURL, handle, arg.Group, arg.Contest)
 		} else {
-			if isSelf == true {
-				link = fmt.Sprintf("%v/%v/%v/my",
-					hostURL, arg.Class, arg.Contest)
-			} else {
-				link = fmt.Sprintf("%v/submissions/%v/%v/%v",
-					hostURL, handle, arg.Class, arg.Contest)
-			}
+			link = fmt.Sprintf("%v/submissions/%v/%v/%v",
+				hostURL, handle, arg.Class, arg.Contest)
 		}
 	} else {
 		link = fmt.Sprintf("%v/submissions/%v",
@@ -67,11 +57,9 @@ func (sub Submission) sourceCodePage() (link string) {
 // GetSubmissions parses and returns all submissions data in specified args
 // of given user. Fetches details of all submissions of handle if args is nil.
 //
-// 'isSelf' should be true if user is current user, false otherwise.
-//
 // Due to a bug on codeforces, submissions in groups are not supported.
-func (arg Args) GetSubmissions(handle string, isSelf bool) ([]Submission, error) {
-	link := arg.submissionsPage(handle, isSelf)
+func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
+	link := arg.submissionsPage(handle)
 	resp, err := SessCln.Get(link)
 	if err != nil {
 		return nil, err

@@ -11,7 +11,6 @@ import (
 func TestArgs_submissionsPage(t *testing.T) {
 	type args struct {
 		handle string
-		isSelf bool
 	}
 	tests := []struct {
 		name     string
@@ -22,25 +21,25 @@ func TestArgs_submissionsPage(t *testing.T) {
 		{
 			name:     "Test #1",
 			arg:      Args{},
-			args:     args{"cp-tools", true},
+			args:     args{"cp-tools"},
 			wantLink: "https://codeforces.com/submissions/cp-tools",
 		},
 		{
 			name:     "Test #2",
 			arg:      Args{"4", "a", "contest", ""},
-			args:     args{"cp-tools", true},
-			wantLink: "https://codeforces.com/contest/4/my",
+			args:     args{"cp-tools"},
+			wantLink: "https://codeforces.com/submissions/cp-tools/contest/4",
 		},
 		{
 			name:     "Test #3",
 			arg:      Args{"102595", "", "gym", ""},
-			args:     args{"cp-tools", false},
+			args:     args{"cp-tools"},
 			wantLink: "https://codeforces.com/submissions/cp-tools/gym/102595",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.submissionsPage(tt.args.handle, tt.args.isSelf); gotLink != tt.wantLink {
+			if gotLink := tt.arg.submissionsPage(tt.args.handle); gotLink != tt.wantLink {
 				t.Errorf("Args.submissionsPage() = %v, want %v", gotLink, tt.wantLink)
 			}
 		})
@@ -71,7 +70,6 @@ func TestSubmission_sourceCodePage(t *testing.T) {
 func TestArgs_GetSubmissions(t *testing.T) {
 	type args struct {
 		handle string
-		isSelf bool
 	}
 	tests := []struct {
 		name    string
@@ -83,7 +81,7 @@ func TestArgs_GetSubmissions(t *testing.T) {
 		{
 			name: "Test #1",
 			arg:  Args{"4", "", "contest", ""},
-			args: args{"cp-tools", true},
+			args: args{"cp-tools"},
 			want: []Submission{
 				{
 					ID:        "81327550",
@@ -139,7 +137,7 @@ func TestArgs_GetSubmissions(t *testing.T) {
 		{
 			name: "Test #2",
 			arg:  Args{"4", "b", "contest", ""},
-			args: args{"cp-tools", true},
+			args: args{"cp-tools"},
 			want: []Submission{
 				{
 					ID:        "81012854",
@@ -159,7 +157,7 @@ func TestArgs_GetSubmissions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.arg.GetSubmissions(tt.args.handle, tt.args.isSelf)
+			got, err := tt.arg.GetSubmissions(tt.args.handle)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.GetSubmissions() error = %v, wantErr %v", err, tt.wantErr)
 				return
