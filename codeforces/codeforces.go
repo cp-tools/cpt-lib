@@ -66,6 +66,12 @@ func Parse(str string) (Args, error) {
 			`^\s*` + rxCont + `\s*` + rxProb + `$`,
 			`^\s*` + rxGroup + `\s*` + rxCont + `$`,
 			`^\s*` + rxGroup + `\s*` + rxCont + `\s*` + rxProb + `$`,
+
+			// for local folders parsing
+			`^\s*` + rxClass + `\s*` + rxCont + `$`,
+			`^\s*` + rxClass + `\s*` + rxCont + `\s*` + rxProb + `$`,
+			`^\s*` + rxClass + `\s*` + rxGroup + `\s*` + rxCont + `$`,
+			`^\s*` + rxClass + `\s*` + rxGroup + `\s*` + rxCont + `\s*` + rxProb + `$`,
 		}
 	)
 
