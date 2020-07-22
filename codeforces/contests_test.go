@@ -30,7 +30,7 @@ func TestArgs_countdownPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.countdownPage(); gotLink != tt.wantLink {
+			if gotLink := tt.arg.CountdownPage(); gotLink != tt.wantLink {
 				t.Errorf("Args.countdownPage() = %v, want %v", gotLink, tt.wantLink)
 			}
 		})
@@ -71,7 +71,7 @@ func TestArgs_contestsPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.contestsPage(); gotLink != tt.wantLink {
+			if gotLink := tt.arg.ContestsPage(); gotLink != tt.wantLink {
 				t.Errorf("Args.contestsPage() = %v, want %v", gotLink, tt.wantLink)
 			}
 		})
@@ -92,7 +92,7 @@ func TestArgs_registerPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.registerPage(); gotLink != tt.wantLink {
+			if gotLink := tt.arg.RegisterPage(); gotLink != tt.wantLink {
 				t.Errorf("Args.registerPage() = %v, want %v", gotLink, tt.wantLink)
 			}
 		})
@@ -341,7 +341,7 @@ func TestArgs_dashboardPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.dashboardPage(); gotLink != tt.wantLink {
+			if gotLink := tt.arg.DashboardPage(); gotLink != tt.wantLink {
 				t.Errorf("Args.dashboardPage() = %v, want %v", gotLink, tt.wantLink)
 			}
 		})

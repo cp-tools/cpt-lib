@@ -40,7 +40,8 @@ var (
 	SessCln *http.Client
 )
 
-func loginPage() string {
+// LoginPage returns link to login page
+func LoginPage() string {
 	return fmt.Sprintf("%v/enter", hostURL)
 }
 
@@ -116,7 +117,7 @@ func Parse(str string) (Args, error) {
 // By default, option 'remember me' is checked, ensuring the session
 // has expiry period of one month from date of last login.
 func Login(usr, passwd string) (string, error) {
-	link := loginPage()
+	link := LoginPage()
 	resp, err := SessCln.Get(link)
 	if err != nil {
 		return "", err

@@ -44,7 +44,7 @@ func TestArgs_problemsPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.problemsPage(); gotLink != tt.wantLink {
+			if gotLink := tt.arg.ProblemsPage(); gotLink != tt.wantLink {
 				t.Errorf("Args.problemsPage() = %v, want %v", gotLink, tt.wantLink)
 			}
 		})

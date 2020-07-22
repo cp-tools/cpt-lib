@@ -25,7 +25,8 @@ type (
 	}
 )
 
-func (arg Args) submissionsPage(handle string) (link string) {
+// SubmissionsPage returns link to user submissions
+func (arg Args) SubmissionsPage(handle string) (link string) {
 	// contest specified
 	if len(arg.Contest) != 0 {
 		if arg.Class == ClassGroup {
@@ -47,15 +48,18 @@ func (arg Args) submissionsPage(handle string) (link string) {
 			}
 		}
 	} else {
-		// I think this is a bad idea....
-		handle, _ := Login("", "")
+		if len(handle) == 0 {
+			// I think this is a bad idea....
+			handle, _ = Login("", "")
+		}
 		link = fmt.Sprintf("%v/submissions/%v",
 			hostURL, handle)
 	}
 	return
 }
 
-func (sub Submission) sourceCodePage() (link string) {
+// SourceCodePage returns link to solution submission
+func (sub Submission) SourceCodePage() (link string) {
 	if sub.Arg.Class == ClassGroup {
 		link = fmt.Sprintf("%v/group/%v/contest/%v/submission/%v",
 			hostURL, sub.Arg.Group, sub.Arg.Contest, sub.ID)
@@ -73,7 +77,7 @@ func (sub Submission) sourceCodePage() (link string) {
 //
 // Due to a bug on codeforces, submissions in groups are not supported.
 func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
-	link := arg.submissionsPage(handle)
+	link := arg.SubmissionsPage(handle)
 	resp, err := SessCln.Get(link)
 	if err != nil {
 		return nil, err
@@ -141,7 +145,7 @@ func (sub Submission) GetSourceCode() (string, error) {
 		return "", ErrInvalidSpecifier
 	}
 
-	link := sub.sourceCodePage()
+	link := sub.SourceCodePage()
 FETCH:
 	resp, err := SessCln.Get(link)
 	if err != nil {

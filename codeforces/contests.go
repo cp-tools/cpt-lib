@@ -52,7 +52,8 @@ const (
 	RegistrationNotExists = -1
 )
 
-func (arg Args) countdownPage() (link string) {
+// CountdownPage returns link to countdown in contest
+func (arg Args) CountdownPage() (link string) {
 	if arg.Class == ClassGroup {
 		link = fmt.Sprintf("%v/group/%v/contest/%v/countdown",
 			hostURL, arg.Group, arg.Contest)
@@ -63,7 +64,8 @@ func (arg Args) countdownPage() (link string) {
 	return
 }
 
-func (arg Args) contestsPage() (link string) {
+// ContestsPage returns link to all contests page (group/gym/contest)
+func (arg Args) ContestsPage() (link string) {
 	if arg.Class == ClassGroup {
 		// details of individual contest can't be parsed.
 		// fallback to parsing all contests in group.
@@ -79,7 +81,8 @@ func (arg Args) contestsPage() (link string) {
 	return
 }
 
-func (arg Args) dashboardPage() (link string) {
+// DashboardPage returns link to dashboard of contest
+func (arg Args) DashboardPage() (link string) {
 	if arg.Class == ClassGroup {
 		link = fmt.Sprintf("%v/group/%v/contest/%v",
 			hostURL, arg.Group, arg.Contest)
@@ -90,7 +93,8 @@ func (arg Args) dashboardPage() (link string) {
 	return
 }
 
-func (arg Args) registerPage() (link string) {
+// RegisterPage returns link to registration (nor virtual reg) in contest
+func (arg Args) RegisterPage() (link string) {
 	// gyms/groups don't support registration, do they!?
 	link = fmt.Sprintf("%v/contestRegistration/%v",
 		hostURL, arg.Contest)
@@ -105,7 +109,7 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 		return 0, ErrInvalidSpecifier
 	}
 
-	link := arg.countdownPage()
+	link := arg.CountdownPage()
 	resp, err := SessCln.Get(link)
 	if err != nil {
 		return 0, err
@@ -138,7 +142,7 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 		return nil, ErrInvalidSpecifier
 	}
 
-	link := arg.contestsPage()
+	link := arg.ContestsPage()
 	resp, err := SessCln.Get(link)
 	if err != nil {
 		return nil, err
@@ -288,7 +292,7 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 		return Dashboard{}, ErrInvalidSpecifier
 	}
 
-	link := arg.dashboardPage()
+	link := arg.DashboardPage()
 	resp, err := SessCln.Get(link)
 	if err != nil {
 		return Dashboard{}, err
@@ -387,7 +391,7 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 		return nil, ErrInvalidSpecifier
 	}
 
-	link := arg.registerPage()
+	link := arg.RegisterPage()
 	resp, err := SessCln.Get(link)
 	if err != nil {
 		return nil, err

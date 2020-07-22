@@ -39,7 +39,7 @@ func TestArgs_submissionsPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.submissionsPage(tt.args.handle); gotLink != tt.wantLink {
+			if gotLink := tt.arg.SubmissionsPage(tt.args.handle); gotLink != tt.wantLink {
 				t.Errorf("Args.submissionsPage() = %v, want %v", gotLink, tt.wantLink)
 			}
 		})
@@ -60,7 +60,7 @@ func TestSubmission_sourceCodePage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.sub.sourceCodePage(); gotLink != tt.wantLink {
+			if gotLink := tt.sub.SourceCodePage(); gotLink != tt.wantLink {
 				t.Errorf("Submission.sourceCodePage() = %v, want %v", gotLink, tt.wantLink)
 			}
 		})

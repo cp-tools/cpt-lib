@@ -37,7 +37,8 @@ const (
 	SolveNotAttempted = -1
 )
 
-func (arg Args) problemsPage() (link string) {
+// ProblemsPage returns link to problem(s) page in contest
+func (arg Args) ProblemsPage() (link string) {
 	// problem specified
 	if len(arg.Problem) != 0 {
 		if arg.Class == ClassGroup {
@@ -74,7 +75,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 		return nil, ErrInvalidSpecifier
 	}
 
-	link := arg.problemsPage()
+	link := arg.ProblemsPage()
 	resp, err := SessCln.Get(link)
 	if err != nil {
 		return nil, err
@@ -130,7 +131,7 @@ func (arg Args) SubmitSolution(langID string, source string) error {
 		return ErrInvalidSpecifier
 	}
 
-	link := arg.problemsPage()
+	link := arg.ProblemsPage()
 	resp, err := SessCln.Get(link)
 	if err != nil {
 		return err

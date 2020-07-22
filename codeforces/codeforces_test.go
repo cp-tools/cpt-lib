@@ -30,7 +30,7 @@ func Test_loginPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := loginPage(); got != tt.want {
+			if got := LoginPage(); got != tt.want {
 				t.Errorf("loginPage() = %v, want %v", got, tt.want)
 			}
 		})
