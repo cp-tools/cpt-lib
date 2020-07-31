@@ -130,6 +130,17 @@ func (arg Args) SubmitSolution(langID string, source string) error {
 	if len(arg.Contest) == 0 || len(arg.Problem) == 0 {
 		return ErrInvalidSpecifier
 	}
+	// if langID invalid, return invalid
+	isLangIDValid := false
+	for _, v := range LanguageID {
+		if v == langID {
+			isLangIDValid = true
+			break
+		}
+	}
+	if isLangIDValid == false {
+		return fmt.Errorf("Invalid language id")
+	}
 
 	link := arg.ProblemsPage()
 	resp, err := SessCln.Get(link)
