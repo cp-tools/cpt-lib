@@ -40,6 +40,20 @@ var (
 	SessCln *http.Client
 )
 
+func (arg Args) String() string {
+	// 201468 c1 (group/Qvv4lz52cT)
+	// 1234 (contest)
+	// 100522 f1 (gym)
+
+	var str string
+	if arg.Group != "" {
+		str = fmt.Sprintf("%v %v (%v/%v)", arg.Contest, arg.Problem, arg.Class, arg.Group)
+	} else {
+		str = fmt.Sprintf("%v %v (%v)", arg.Contest, arg.Problem, arg.Class)
+	}
+	return strings.Join(strings.Fields(str), " ")
+}
+
 // LoginPage returns link to login page
 func LoginPage() string {
 	return fmt.Sprintf("%v/enter", hostURL)
@@ -54,7 +68,7 @@ func Parse(str string) (Args, error) {
 	var (
 		rxCont  = `(?P<cont>\d+)`
 		rxProb  = `(?P<prob>[A-Za-z][1-9]?)`
-		rxClass = `(?P<class>contest|gym|group)`
+		rxClass = `(?P<class>contest|gym|group|problemset)`
 		rxGroup = `(?P<group>\w{10})`
 
 		valRx = []string{
@@ -62,6 +76,7 @@ func Parse(str string) (Args, error) {
 			`codeforces.com\/` + rxClass + `\/` + rxCont + `\/problem\/` + rxProb + `$`,
 			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + `contest` + `\/` + rxCont + `$`,
 			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + `contest` + `\/` + rxCont + `\/problem\/` + rxProb + `$`,
+			`codeforces.com\/` + rxClass + `\/problem\/` + rxCont + `\/` + rxProb + `$`,
 
 			`^\s*` + rxCont + `$`,
 			`^\s*` + rxCont + `\s*` + rxProb + `$`,
