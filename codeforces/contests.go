@@ -157,7 +157,15 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 	for c := 1; c <= pages; c++ {
 		isOver := false
 		doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
-		table := doc.Find("tr[data-contestid]")
+		// upcoming contests table repeats every page.
+		// Remove it from all subsequent pages parsing.
+		var table *goquery.Selection
+		if c == 1 {
+			table = doc.Find("tr[data-contestid]")
+		} else {
+			table = doc.Find(".datatable").Find("tr[data-contestid]")
+		}
+
 		table.EachWithBreak(func(_ int, cont *goquery.Selection) bool {
 			// extract contest args from html attr label
 			contArg, _ := Parse(clean(arg.Group + cont.AttrOr("data-contestid", "")))
@@ -271,7 +279,9 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 		}
 
 		if c+1 <= pages {
-			cLink := fmt.Sprintf("%v/page/%d", link, c+1)
+			// remove ?complete=true from link
+			tmp := strings.TrimSuffix(link, "?complete=true")
+			cLink := fmt.Sprintf("%v/page/%d", tmp, c+1)
 			resp, err = SessCln.Get(cLink)
 			if err != nil {
 				return nil, err
