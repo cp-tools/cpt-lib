@@ -2,6 +2,8 @@ name: Build and Test (codeforces)
 
 on:
   push:
+    branches:
+      - '*'
     tags-ignore:
       - 'v*'
     paths:
