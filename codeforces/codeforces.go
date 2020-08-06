@@ -151,7 +151,9 @@ func Login(usr, passwd string) (string, error) {
 	// otherwise, login
 	page.Element("#handleOrEmail").Input(usr)
 	page.Element("#password").Input(passwd)
-	page.Element("#remember").Click()
+	if page.Element("#remember").Property("checked").Bool() == false {
+		page.Element("#remember").Click()
+	}
 	page.Element(".submit").Click()
 
 	// race two selectors, wait till one resolves
