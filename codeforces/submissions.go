@@ -1,5 +1,6 @@
 package codeforces
 
+/*
 import (
 	"bytes"
 	"fmt"
@@ -166,3 +167,4 @@ FETCH:
 	source = doc.Find("pre#program-source-text").Text()
 	return source, nil
 }
+*/

@@ -2,10 +2,10 @@ package codeforces
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/go-rod/rod"
 )
 
 type (
@@ -35,9 +35,14 @@ var (
 
 var (
 	hostURL = "https://codeforces.com"
-	// SessCln should be set to desired session configuration.
-	// Ensure cookies, proxy protocol etc are set up if reqd.
-	SessCln *http.Client
+	/*
+		// SessCln should be set to desired session configuration.
+		// Ensure cookies, proxy protocol etc are set up if reqd.
+		SessCln *http.Client
+	*/
+
+	// Browser is the headless browser to use.
+	Browser *rod.Browser
 )
 
 func (arg Args) String() string {
@@ -133,45 +138,28 @@ func Parse(str string) (Args, error) {
 // has expiry period of one month from date of last login.
 func Login(usr, passwd string) (string, error) {
 	link := LoginPage()
-	resp, err := SessCln.Get(link)
-	if err != nil {
-		return "", err
-	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		return "", err
+	page := Browser.Page(link).WaitLoad()
+	if msg := cE(page); msg != "" {
+		return "", fmt.Errorf(msg)
 	}
 
 	// check if current user sesion is logged in
-	if handle := findHandle(body); len(handle) != 0 {
+	if handle := findHandle(page); handle != "" {
 		return handle, nil
 	}
 
-	// hidden form data
-	csrf := findCsrf(body)
-	ftaa := genRandomString(18)
-	bfaa := genRandomString(32)
+	// otherwise, login
+	page.Element("#handleOrEmail").Input(usr)
+	page.Element("#password").Input(passwd)
+	page.Element("#remember").Click()
+	page.Element(".submit").Click()
 
-	resp, err = SessCln.PostForm(link, url.Values{
-		"csrf_token":    {csrf},
-		"action":        {"enter"},
-		"ftaa":          {ftaa},
-		"bfaa":          {bfaa},
-		"handleOrEmail": {usr},
-		"password":      {passwd},
-		"_tta":          {"176"},
-		"remember":      {"on"},
-	})
-	if err != nil {
-		return "", err
-	}
-
-	// the only message possible is Welcome, handle!
-	body, _ = parseResp(resp)
-	handle := findHandle(body)
-	if len(handle) == 0 {
-		// login failed
+	// race two selectors, wait till one resolves
+	errSelector := ".error.for__password"
+	el := page.Element(errSelector, "#header a[href^=\"/profile/\"]")
+	if el.Matches(errSelector) {
 		return "", ErrInvalidCredentials
 	}
-	return handle, nil
+
+	return el.Text(), nil
 }

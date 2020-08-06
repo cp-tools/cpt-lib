@@ -1,20 +1,22 @@
 package codeforces
 
 import (
-	"net/http"
-	"net/http/cookiejar"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
 )
 
 func init() {
+	url := launcher.New().UserDataDir("user-data-dir").Launch()
+	Browser = rod.New().ControlURL(url).Connect()
+
 	// login to account for access to all other tests
 	usr := os.Getenv("CODEFORCES_USERNAME")
 	passwd := os.Getenv("CODEFORCES_PASSWORD")
 
-	jar, _ := cookiejar.New(nil)
-	SessCln = &http.Client{Jar: jar}
 	Login(usr, passwd)
 }
 
@@ -154,21 +156,16 @@ func TestLogin(t *testing.T) {
 			want:    "cp-tools",
 			wantErr: false,
 		},
-		{
+		/*{
 			name:    "Invalid login",
 			args:    args{"infixint943", "ThIsNoTmYPASsWd"},
 			want:    "",
 			wantErr: true,
-		},
+		},*/
 		// TODO: Add test cases.
 	}
 
-	tmpSess := *SessCln
 	for _, tt := range tests {
-		// reset cookie configurations
-		jar, _ := cookiejar.New(nil)
-		SessCln = &http.Client{Jar: jar}
-
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := Login(tt.args.usr, tt.args.passwd)
 			if (err != nil) != tt.wantErr {
@@ -180,5 +177,4 @@ func TestLogin(t *testing.T) {
 			}
 		})
 	}
-	SessCln = &tmpSess
 }

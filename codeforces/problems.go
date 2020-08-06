@@ -1,5 +1,6 @@
 package codeforces
 
+/*
 import (
 	"bytes"
 	"fmt"
@@ -190,3 +191,4 @@ func (arg Args) SubmitSolution(langID string, source string) error {
 
 	return fmt.Errorf(msg)
 }
+*/

@@ -4,28 +4,26 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/go-rod/rod"
 )
 
-func parseResp(resp *http.Response) ([]byte, string) {
+func cE(page *rod.Page) string {
 	var msg string
-	defer resp.Body.Close()
-	body, _ := ioutil.ReadAll(resp.Body)
+	body := page.Element("html").HTML()
 
 	msgRgx := `Codeforces\.showMessage\("(.+)"\);\s+Codeforces\.reformatTimes\(\);`
 	re := regexp.MustCompile(msgRgx)
-	tmp := re.FindStringSubmatch(string(body))
+	tmp := re.FindStringSubmatch(body)
 	if tmp != nil {
 		msg = clean(tmp[1])
 	}
-	return body, msg
+	return msg
 }
 
 func clean(str string) string {
@@ -56,10 +54,13 @@ func getAttr(sel *goquery.Selection, query, attr string) string {
 }
 
 // findHandle scrapes handle from REQUEST body
-func findHandle(body []byte) string {
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
-	val := doc.Find("#header").Find("a[href^=\"/profile/\"]").Text()
-	return val
+func findHandle(page *rod.Page) string {
+	elm := page.Elements("#header a[href^=\"/profile/\"]")
+	if len(elm) == 0 {
+		return ""
+	}
+
+	return elm.First().Text()
 }
 
 // findCsrf extracts Csrf from REQUEST body

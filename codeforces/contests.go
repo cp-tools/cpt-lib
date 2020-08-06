@@ -1,5 +1,6 @@
 package codeforces
 
+/*
 import (
 	"bytes"
 	"fmt"
@@ -435,3 +436,4 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 	}
 	return registerInfo, nil
 }
+*/
