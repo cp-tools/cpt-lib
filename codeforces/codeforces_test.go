@@ -156,6 +156,7 @@ func TestLogin(t *testing.T) {
 			want:    "cp-tools",
 			wantErr: false,
 		},
+		// can't run wrong login without resetting browser
 		/*{
 			name:    "Invalid login",
 			args:    args{"infixint943", "ThIsNoTmYPASsWd"},
