@@ -1,7 +1,6 @@
 package codeforces
 
 import (
-	"bytes"
 	"crypto/rand"
 	"fmt"
 	"regexp"
@@ -63,24 +62,15 @@ func findHandle(page *rod.Page) string {
 	return elm.First().Text()
 }
 
-// findCsrf extracts Csrf from REQUEST body
-func findCsrf(body []byte) string {
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
-	val, _ := doc.Find(".csrf-token").Attr("data-csrf")
-	return val
-}
-
 // findPagination returns number of pages of table
 // returns (1 if no pagination found)
-func findPagination(body []byte) int {
-	// parse html body to find number of pages (in pagination)
-	// return's default value of 1 if no pagination found
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
-	val := getText(doc.Find(".page-index").Last(), "a")
-	num, err := strconv.Atoi(val)
-	if err != nil {
+func findPagination(page *rod.Page) int {
+	val := page.Elements(".page-index a").Last()
+	if val == nil {
+		// no pagination found
 		return 1
 	}
+	num, _ := strconv.Atoi(val.Text())
 	return num
 }
 

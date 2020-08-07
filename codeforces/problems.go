@@ -74,8 +74,12 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	}
 
 	link := arg.ProblemsPage()
-	page := Browser.Page(link).WaitLoad()
+	page, err := Browser.PageE(link)
+	if err != nil {
+		return nil, err
+	}
 
+	page.WaitLoad()
 	if msg := cE(page); msg != "" {
 		// shouldn't return any error if success
 		return nil, fmt.Errorf(msg)
@@ -140,8 +144,12 @@ func (arg Args) SubmitSolution(langID string, file string) error {
 	}
 
 	link := arg.ProblemsPage()
-	page := Browser.Page(link).WaitLoad()
+	page, err := Browser.PageE(link)
+	if err != nil {
+		return err
+	}
 
+	page.WaitLoad()
 	if msg := cE(page); msg != "" {
 		// shouldn't return any error if success
 		return fmt.Errorf(msg)

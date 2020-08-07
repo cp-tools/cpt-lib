@@ -1,10 +1,8 @@
 package codeforces
 
-/*
 import (
-	"bytes"
 	"fmt"
-	"net/http"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -79,22 +77,23 @@ func (sub Submission) SourceCodePage() (link string) {
 // Due to a bug on codeforces, submissions in groups are not supported.
 func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
 	link := arg.SubmissionsPage(handle)
-	resp, err := SessCln.Get(link)
+	page, err := Browser.PageE(link)
 	if err != nil {
 		return nil, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		// shouldn't return any error on success
+
+	page.WaitLoad()
+	if msg := cE(page); msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
+	body := page.Element("html").HTML()
 
 	// @todo Add support for excluding unofficial submissions
 
 	var submissions []Submission
-	pages := findPagination(body)
+	pages := findPagination(page)
 	for c := 1; c <= pages; c++ {
-		doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+		doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
 		table := doc.Find("tr[data-submission-id]")
 		table.Each(func(_ int, sub *goquery.Selection) {
 			probLk := hostURL + getAttr(sub, "td:nth-of-type(4) a", "href")
@@ -122,14 +121,16 @@ func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
 		})
 		if c+1 <= pages {
 			cLink := fmt.Sprintf("%v/page/%d", link, c+1)
-			resp, err = SessCln.Get(cLink)
+			page, err := Browser.PageE(cLink)
 			if err != nil {
-				return nil, err
+				return submissions, err
 			}
-			body, msg = parseResp(resp)
-			if len(msg) != 0 {
+
+			page.WaitLoad()
+			if msg := cE(page); msg != "" {
 				return nil, fmt.Errorf(msg)
 			}
+			body = page.Element("html").HTML()
 		}
 	}
 	return submissions, nil
@@ -145,26 +146,20 @@ func (sub Submission) GetSourceCode() (string, error) {
 	if len(sub.Arg.Contest) == 0 || len(sub.ID) == 0 {
 		return "", ErrInvalidSpecifier
 	}
-
 	link := sub.SourceCodePage()
-FETCH:
-	resp, err := SessCln.Get(link)
+	page, err := Browser.PageE(link)
 	if err != nil {
-		return source, err
+		return "", err
 	}
-	if resp.StatusCode == http.StatusTooManyRequests {
-		// sleep for 4 seconds before resending request
-		time.Sleep(time.Second * 4)
-		goto FETCH
+
+	page.WaitLoad()
+	if msg := cE(page); msg != "" {
+		return "", fmt.Errorf(msg)
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		// msg should be length 0 if success
-		return source, fmt.Errorf(msg)
-	}
+	body := page.Element("html").HTML()
+
 	// extract source code from html body
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
 	source = doc.Find("pre#program-source-text").Text()
 	return source, nil
 }
-*/

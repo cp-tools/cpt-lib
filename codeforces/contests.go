@@ -1,10 +1,7 @@
 package codeforces
 
-/*
 import (
-	"bytes"
 	"fmt"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -111,16 +108,18 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 	}
 
 	link := arg.CountdownPage()
-	resp, err := SessCln.Get(link)
+	page, err := Browser.PageE(link)
 	if err != nil {
 		return 0, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
+
+	page.WaitLoad()
+	if msg := cE(page); msg != "" {
 		return 0, fmt.Errorf(msg)
 	}
+	body := page.Element("html").HTML()
 
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
 	val := doc.Find("span.countdown>span").AttrOr("title", "")
 	if len(val) == 0 {
 		val = doc.Find("span.countdown").Text()
@@ -144,20 +143,22 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 	}
 
 	link := arg.ContestsPage()
-	resp, err := SessCln.Get(link)
+	page, err := Browser.PageE(link)
 	if err != nil {
 		return nil, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
+
+	page.WaitLoad()
+	if msg := cE(page); msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
+	body := page.Element("html").HTML()
 
 	var contests []Contest
-	pages := findPagination(body)
+	pages := findPagination(page)
 	for c := 1; c <= pages; c++ {
 		isOver := false
-		doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+		doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
 		// upcoming contests table repeats every page.
 		// Remove it from all subsequent pages parsing.
 		var table *goquery.Selection
@@ -283,14 +284,16 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 			// remove ?complete=true from link
 			tmp := strings.TrimSuffix(link, "?complete=true")
 			cLink := fmt.Sprintf("%v/page/%d", tmp, c+1)
-			resp, err = SessCln.Get(cLink)
+			page, err := Browser.PageE(cLink)
 			if err != nil {
 				return nil, err
 			}
-			body, msg = parseResp(resp)
-			if len(msg) != 0 {
+
+			page.WaitLoad()
+			if msg := cE(page); msg != "" {
 				return nil, fmt.Errorf(msg)
 			}
+			body = page.Element("html").HTML()
 		}
 	}
 	return contests, nil
@@ -304,20 +307,22 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 	}
 
 	link := arg.DashboardPage()
-	resp, err := SessCln.Get(link)
+	page, err := Browser.PageE(link)
 	if err != nil {
 		return Dashboard{}, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
+
+	page.WaitLoad()
+	if msg := cE(page); msg != "" {
 		return Dashboard{}, fmt.Errorf(msg)
 	}
+	body := page.Element("html").HTML()
 
 	dashboard := Dashboard{}
 	dashboard.Material = make(map[string]string)
 
 	// extraction begins here!!
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
 	// extract contest name
 	dashboard.Name = getText(doc.Selection, ".rtable th")
 	// extract countdown to contest end
@@ -403,37 +408,25 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 	}
 
 	link := arg.RegisterPage()
-	resp, err := SessCln.Get(link)
+	page, err := Browser.PageE(link)
 	if err != nil {
 		return nil, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
+
+	page.WaitLoad()
+	if msg := cE(page); msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
+	body := page.Element("html").HTML()
 
-	// hidden form data
-	csrf := findCsrf(body)
-	ftaa := genRandomString(18)
-	bfaa := genRandomString(32)
-
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
 	registerInfo := &RegisterInfo{
 		Name:  getText(doc.Selection, "h2"),
 		Terms: getText(doc.Selection, ".terms"),
 		Register: func() error {
-			_, err := SessCln.PostForm(link, url.Values{
-				"csrf_token": {csrf},
-				"ftaa":       {ftaa},
-				"bfaa":       {bfaa},
-				"action":     {"formSubmitted"},
-				"backUrl":    {""},
-				"takePartAs": {"personal"},
-				"_tta":       {"176"},
-			})
-			return err
+			page.Element(".submit").Click()
+			return nil
 		},
 	}
 	return registerInfo, nil
 }
-*/

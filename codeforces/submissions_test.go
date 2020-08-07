@@ -1,6 +1,5 @@
 package codeforces
 
-/*
 import (
 	"reflect"
 	"testing"
@@ -202,4 +201,3 @@ func TestSubmission_GetSourceCode(t *testing.T) {
 		})
 	}
 }
-*/
