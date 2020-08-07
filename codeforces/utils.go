@@ -76,19 +76,30 @@ func findPagination(page *rod.Page) int {
 
 // if the time string is invalid, returns time corresponding to
 // the start of time => (1 Jan 1970 00:00)
-func parseTime(str string) time.Time {
-	// date-time format on codeforces
-	const ruTime = "02.01.2006 15:04 Z07:00"
-	const enTime = "Jan/02/2006 15:04 Z07:00"
+func parseTime(link string) time.Time {
 
-	raw := fmt.Sprintf("%v +03:00", str)
-	tm, err := time.Parse(enTime, raw)
+	re := regexp.MustCompile(`([A-Za-z]+)\/(\d+)\/(\d+) (\d+):(\d+)UTC(\+|-)(\d+).(\d+)`)
+	pst := re.FindAllStringSubmatch(link, -1)
+	if pst == nil || len(pst[0]) < 9 {
+		return time.Unix(0, 0).UTC()
+	}
+
+	// set values
+	pMonth, pDay, pYear := pst[0][1], pst[0][2], pst[0][3]
+	pHour, pMinute := pst[0][4], pst[0][5]
+	pOffset, pMajor, pMinor := pst[0][6], pst[0][7], pst[0][8]
+	pMajor = fmt.Sprintf("0%v", pMajor)[:2]
+	if pMinor == "5" {
+		pMinor = "30"
+	}
+	pMinor = fmt.Sprintf("%v0", pMinor)[:2]
+
+	val := fmt.Sprintf("%v/%v/%v %v:%v %v%v:%v",
+		pMonth, pDay, pYear, pHour, pMinute, pOffset, pMajor, pMinor)
+
+	tm, err := time.Parse("Jan/2/2006 15:04 Z07:00", val)
 	if err != nil {
-		tm, err = time.Parse(ruTime, raw)
-		if err != nil {
-			// set to the beginning of time
-			tm = time.Unix(0, 0)
-		}
+		tm = time.Unix(0, 0)
 	}
 	return tm.UTC()
 }

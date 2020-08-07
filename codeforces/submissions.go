@@ -160,6 +160,8 @@ func (sub Submission) GetSourceCode() (string, error) {
 
 	// extract source code from html body
 	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
-	source = doc.Find("pre#program-source-text").Text()
-	return source, nil
+	doc.Find("pre#program-source-text li").Each(func(_ int, ln *goquery.Selection) {
+		source += ln.Text() + "\n"
+	})
+	return clean(source), nil
 }

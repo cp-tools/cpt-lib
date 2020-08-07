@@ -3,6 +3,7 @@ package codeforces
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -158,7 +159,9 @@ func (arg Args) SubmitSolution(langID string, file string) error {
 	// do the submitting here! (really simple)
 	page.Element(`select[name="programTypeId"]`).Select(langIDName)
 	page.Element(`input[name="sourceFile"]`).SetFiles(file)
-	page.Element(`input.submit`).Click().WaitLoad()
+	page.Element(`input.submit`).Click()
+	time.Sleep(time.Millisecond * 100)
+	page.WaitLoad()
 
 	if msg := page.Elements(`.error.for__source`); len(msg) != 0 {
 		// static error message (exact submission done before)
