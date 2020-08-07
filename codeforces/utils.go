@@ -77,25 +77,33 @@ func findPagination(page *rod.Page) int {
 // if the time string is invalid, returns time corresponding to
 // the start of time => (1 Jan 1970 00:00)
 func parseTime(link string) time.Time {
-
-	re := regexp.MustCompile(`([A-Za-z]+)\/(\d+)\/(\d+) (\d+):(\d+)UTC(\+|-)(\d+).(\d+)`)
+	re := regexp.MustCompile(`([A-Za-z]+)\/(\d+)\/(\d+) (\d+):(\d+)`)
 	pst := re.FindAllStringSubmatch(link, -1)
-	if pst == nil || len(pst[0]) < 9 {
+	if pst == nil || len(pst[0]) < 6 {
 		return time.Unix(0, 0).UTC()
 	}
 
 	// set values
 	pMonth, pDay, pYear := pst[0][1], pst[0][2], pst[0][3]
 	pHour, pMinute := pst[0][4], pst[0][5]
-	pOffset, pMajor, pMinor := pst[0][6], pst[0][7], pst[0][8]
-	pMajor = fmt.Sprintf("0%v", pMajor)[:2]
-	if pMinor == "5" {
-		pMinor = "30"
-	}
-	pMinor = fmt.Sprintf("%v0", pMinor)[:2]
+	val := fmt.Sprintf("%v/%v/%v %v:%v",
+		pMonth, pDay, pYear, pHour, pMinute)
 
-	val := fmt.Sprintf("%v/%v/%v %v:%v %v%v:%v",
-		pMonth, pDay, pYear, pHour, pMinute, pOffset, pMajor, pMinor)
+	// only if UTC... is present
+	re = regexp.MustCompile(`UTC(\+|-)(\d+).(\d+)`)
+	pst = re.FindAllStringSubmatch(link, -1)
+	if pst == nil || len(pst[0]) < 4 {
+		val = fmt.Sprintf("%v +00:00", val)
+	} else {
+		pOffset, pMajor, pMinor := pst[0][1], pst[0][2], pst[0][3]
+		pMajor = fmt.Sprintf("0%v", pMajor)[:2]
+		if pMinor == "5" {
+			pMinor = "30"
+		}
+		pMinor = fmt.Sprintf("%v0", pMinor)[:2]
+
+		val = fmt.Sprintf("%v %v%v:%v", val, pOffset, pMajor, pMinor)
+	}
 
 	tm, err := time.Parse("Jan/2/2006 15:04 Z07:00", val)
 	if err != nil {
