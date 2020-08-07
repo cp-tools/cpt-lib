@@ -10,7 +10,8 @@ import (
 )
 
 func init() {
-	url := launcher.New().UserDataDir("user-data-dir").Launch()
+	url := launcher.New().UserDataDir("user-data-dir").
+		Set("blink-settings", "imagesEnabled=false").Launch()
 	Browser = rod.New().ControlURL(url).Connect()
 
 	// login to account for access to all other tests
