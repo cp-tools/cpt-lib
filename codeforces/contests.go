@@ -184,6 +184,10 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 			var newContest Contest
 			// extract contest args from html attr label
 			contArg, _ := Parse(arg.Group + cont.AttrOr("data-contestid", ""))
+			if arg.Contest != "" && arg.Contest != contArg.Contest {
+				// contest id is specified to fetch. This contest doesn't match it.
+				return true
+			}
 			newContest.Arg = contArg
 
 			// the table format for contests is different from groups and gyms/contests.
@@ -325,69 +329,70 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 	// extraction begins here!!
 	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
 	// extract contest name
-	dashboard.Name = getText(doc.Selection, ".rtable th")
+	dashboard.Name = clean(doc.Find(".rtable th").Text())
 	// extract countdown to contest end
-	if str := getText(doc.Selection, ".countdown"); len(str) != 0 {
+	if true {
+		str := clean(doc.Find(".countdown").Text())
 		var h, m, s int
 		fmt.Sscanf(str, "%d:%d:%d", &h, &m, &s)
-		dashboard.Countdown = time.Duration(h*3600+m*60+s) * time.Second
-	} else {
-		dashboard.Countdown = time.Second * 0
+		countdown := time.Duration(h*3600+m*60+s) * time.Second
+		dashboard.Countdown = countdown
 	}
 
 	// extract problems data
-	probTable := doc.Find(".problems tr").Has("td")
-	probTable.Each(func(_ int, prob *goquery.Selection) {
+	doc.Find(".problems tr").Has("td").Each(func(_ int, prob *goquery.Selection) {
+		var newProblem Problem
+
 		// what do I do if there is an error?
-		probArg, _ := Parse(hostURL + getAttr(prob, "td:nth-of-type(1) a", "href"))
-
-		// append if matches criteria
-		if len(arg.Problem) == 0 || arg.Problem == probArg.Problem {
-			// extract timelimit/memory limit from problem data
-			conSel := prob.Find("td:nth-of-type(2) .notice")
-			constraints := clean(conSel.Contents().Last().Text())
-
-			// extract inp/out stream data.
-			dataStream := getText(conSel, "div")
-			var inpStream, outStream string
-			if dataStream == "standard input/output" {
-				inpStream = "standard input"
-				outStream = "standard output"
-			} else {
-				inpStream = strings.Split(dataStream, "/")[0]
-				outStream = strings.Split(dataStream, "/")[1]
-			}
-
-			// extract solve status
-			var solveStatus int
-			if prob.AttrOr("class", "") == "accepted-problem" {
-				solveStatus = SolveAccepted
-			} else if prob.AttrOr("class", "") == "rejected-problem" {
-				solveStatus = SolveRejected
-			} else {
-				solveStatus = SolveNotAttempted
-			}
-
-			// extract solve count
-			var solveCount int
-			sc := getText(prob, "td:nth-of-type(4)")
-			if len(sc) > 1 {
-				// remove the 'x' prefix
-				solveCount, _ = strconv.Atoi(sc[1:])
-			}
-
-			dashboard.Problem = append(dashboard.Problem, Problem{
-				Name:        getText(prob, "td:nth-of-type(2) a"),
-				TimeLimit:   strings.Split(constraints, ", ")[0],
-				MemoryLimit: strings.Split(constraints, ", ")[1],
-				InpStream:   inpStream,
-				OutStream:   outStream,
-				SolveCount:  solveCount,
-				SolveStatus: solveStatus,
-				Arg:         probArg,
-			})
+		probArg, _ := Parse(hostURL + prob.Find("td a").AttrOr("href", ""))
+		if arg.Problem != "" && arg.Problem != probArg.Problem {
+			return
 		}
+		newProblem.Arg = probArg
+
+		// extract solve status
+		switch prob.AttrOr("class", "") {
+		case "accepted-problem":
+			newProblem.SolveStatus = SolveAccepted
+		case "rejected-problem":
+			newProblem.SolveStatus = SolveRejected
+		default:
+			newProblem.SolveStatus = SolveNotAttempted
+		}
+
+		prob.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+			switch cellIdx {
+			case 1:
+				conSel := cell.Find(".notice")
+				// extract time/memory limit from problem
+				constraints := clean(conSel.Contents().Last().Text())
+				newProblem.TimeLimit = strings.Split(constraints, ", ")[0]
+				newProblem.MemoryLimit = strings.Split(constraints, ", ")[1]
+
+				// extract input/output stream.
+				if sval := getText(conSel, "div"); sval == "standard input/output" {
+					newProblem.InpStream = "standard input"
+					newProblem.OutStream = "standard output"
+				} else {
+					newProblem.InpStream = strings.Split(sval, "/")[0]
+					newProblem.OutStream = strings.Split(sval, "/")[1]
+				}
+
+				name := cell.Find("a").Text()
+				newProblem.Name = name
+
+			case 3:
+				solveCount := 0
+				if sval := clean(cell.Text()); len(sval) > 1 {
+					// remove the 'x' prefix from x123 count
+					solveCount, _ = strconv.Atoi(sval[1:])
+				}
+				newProblem.SolveCount = solveCount
+			}
+		})
+		dashboard.Problem = append(dashboard.Problem, newProblem)
 	})
+
 	// extract contest material
 	doc.Find("#sidebar li a").Each(func(_ int, data *goquery.Selection) {
 		href := data.AttrOr("href", "")
