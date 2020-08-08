@@ -94,31 +94,56 @@ func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
 	pages := findPagination(page)
 	for c := 1; c <= pages; c++ {
 		doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
-		table := doc.Find("tr[data-submission-id]")
-		table.Each(func(_ int, sub *goquery.Selection) {
-			probLk := hostURL + getAttr(sub, "td:nth-of-type(4) a", "href")
-			subArg, _ := Parse(probLk)
+		doc.Find("tr[data-submission-id]").Each(func(_ int, sub *goquery.Selection) {
+			var newSubmission Submission
 
-			if len(arg.Problem) == 0 || arg.Problem == subArg.Problem {
-				// parse various details
-				isJudging := getAttr(sub, "td:nth-of-type(6)", "waiting") == "true"
-				when := parseTime(getText(sub, "td:nth-of-type(2)"))
-
-				submissions = append(submissions, Submission{
-					ID:       getText(sub, "td:nth-of-type(1)"),
-					When:     when,
-					Who:      getText(sub, "td:nth-of-type(3)"),
-					Problem:  getText(sub, "td:nth-of-type(4)"),
-					Language: getText(sub, "td:nth-of-type(5)"),
-					Verdict:  getText(sub, "td:nth-of-type(6)"),
-					Time:     getText(sub, "td:nth-of-type(7)"),
-					Memory:   getText(sub, "td:nth-of-type(8)"),
-
-					IsJudging: isJudging,
-					Arg:       subArg,
-				})
+			subArg, _ := Parse(hostURL + getAttr(sub, "td:nth-of-type(4) a", "href"))
+			if arg.Problem != "" && arg.Problem != subArg.Problem {
+				return
 			}
+			newSubmission.Arg = subArg
+
+			sub.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+				switch cellIdx {
+				case 0:
+					id := clean(cell.Text())
+					newSubmission.ID = id
+
+				case 1:
+					when := parseTime(clean(cell.Text()))
+					newSubmission.When = when
+
+				case 2:
+					who := clean(cell.Text())
+					newSubmission.Who = who
+
+				case 3:
+					problem := clean(cell.Text())
+					newSubmission.Problem = problem
+
+				case 4:
+					language := clean(cell.Text())
+					newSubmission.Language = language
+
+				case 5:
+					isJudging := cell.AttrOr("waiting", "") == "true"
+					newSubmission.IsJudging = isJudging
+
+					verdict := clean(cell.Text())
+					newSubmission.Verdict = verdict
+
+				case 6:
+					time := clean(cell.Text())
+					newSubmission.Time = time
+
+				case 7:
+					memory := clean(cell.Text())
+					newSubmission.Memory = memory
+				}
+			})
+			submissions = append(submissions, newSubmission)
 		})
+
 		if c+1 <= pages {
 			cLink := fmt.Sprintf("%v/page/%d", link, c+1)
 			page, err := Browser.PageE(cLink)
