@@ -1,7 +1,6 @@
 package codeforces
 
 import (
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -133,27 +132,25 @@ func Parse(str string) (Args, error) {
 // of SessCln to nil before logging in.
 //
 // If login is successful, returns user handle of now logged in session.
-// Also returns cookies of current session (encoded with json.Marshal).
 // Otherwise, if login fails, returns ErrInvalidCredentials as error.
 //
 // By default, option 'remember me' is checked, ensuring the session
 // has expiry period of one month from date of last login.
-func Login(usr, passwd string) (string, string, error) {
+func Login(usr, passwd string) (string, error) {
 	link := LoginPage()
 	page, err := Browser.PageE(link)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	page.WaitLoad()
 	if msg := cE(page); msg != "" {
-		return "", "", fmt.Errorf(msg)
+		return "", fmt.Errorf(msg)
 	}
 
 	// check if current user sesion is logged in
 	if handle := findHandle(page); handle != "" {
-		b, _ := json.Marshal(page.Cookies())
-		return handle, string(b), nil
+		return handle, nil
 	}
 
 	// otherwise, login
@@ -168,9 +165,8 @@ func Login(usr, passwd string) (string, string, error) {
 	errSelector := ".error.for__password"
 	el := page.Element(errSelector, "#header a[href^=\"/profile/\"]")
 	if el.Matches(errSelector) {
-		return "", "", ErrInvalidCredentials
+		return "", ErrInvalidCredentials
 	}
 
-	b, _ := json.Marshal(page.Cookies())
-	return el.Text(), string(b), nil
+	return el.Text(), nil
 }
