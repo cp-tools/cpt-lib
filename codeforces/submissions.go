@@ -49,7 +49,7 @@ func (arg Args) SubmissionsPage(handle string) (link string) {
 	} else {
 		if len(handle) == 0 {
 			// I think this is a bad idea....
-			handle, _ = Login("", "")
+			handle, _, _ = Login("", "")
 		}
 		link = fmt.Sprintf("%v/submissions/%v",
 			hostURL, handle)

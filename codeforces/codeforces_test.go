@@ -169,7 +169,7 @@ func TestLogin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Login(tt.args.usr, tt.args.passwd)
+			got, _, err := Login(tt.args.usr, tt.args.passwd)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Login() error = %v, wantErr %v", err, tt.wantErr)
 				return
