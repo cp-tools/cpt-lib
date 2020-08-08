@@ -2,6 +2,7 @@ package codeforces
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -165,115 +166,115 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 		if c == 1 {
 			table = doc.Find("tr[data-contestid]")
 		} else {
-			table = doc.Find(".datatable").Find("tr[data-contestid]")
+			table = doc.Find(".datatable").
+				Eq(1).Find("tr[data-contestid]")
 		}
 
 		table.EachWithBreak(func(_ int, cont *goquery.Selection) bool {
+			// parse duration string (using ugly regex)
+			parseDuration := func(str string) time.Duration {
+				re := regexp.MustCompile(`(?:(\d+):)?(\d+):(\d+)`)
+				val := re.FindStringSubmatch(str)
+				d, _ := strconv.Atoi(val[1])
+				h, _ := strconv.Atoi(val[2])
+				m, _ := strconv.Atoi(val[3])
+				return time.Duration(d*1440+h*60+m) * time.Minute
+			}
+
+			var newContest Contest
 			// extract contest args from html attr label
-			contArg, _ := Parse(clean(arg.Group + cont.AttrOr("data-contestid", "")))
+			contArg, _ := Parse(arg.Group + cont.AttrOr("data-contestid", ""))
+			newContest.Arg = contArg
 
-			// remove links from contest name
-			name := cont.Find("td:nth-of-type(1)")
-			name.Find("a").Remove()
+			// the table format for contests is different from groups and gyms/contests.
+			if contArg.Class == ClassContest || (contArg.Class == ClassGym && contArg.Contest != "") {
+				cont.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+					switch cellIdx {
+					case 0:
+						// remove all links from text
+						cell.Find("a").Remove()
+						newContest.Name = clean(cell.Text())
 
-			if len(arg.Contest) != 0 && arg.Contest != contArg.Contest {
-				// skip current contest data
-				// required because of selection of group contest
-				return true
-			}
+					case 1:
+						writers := strings.Split(clean(cell.Text()), "\n")
+						if writers[0] == "" {
+							// no writers are specified. Set slice to nil
+							writers = nil
+						}
 
-			// extract duration from contest length
-			parseDur := func(str string) time.Duration {
-				d, h, m := 0, 0, 0
-				// format - days:hours:minutes
-				_, err := fmt.Sscanf(str, "%d:%d:%d", &d, &h, &m)
-				if err != nil {
-					d, h, m = 0, 0, 0
-					// format - hours:minutes
-					fmt.Sscanf(str, "%d:%d", &h, &m)
-				}
-				dur := time.Duration(d*1440+h*60+m) * time.Minute
-				return dur
-			}
+						newContest.Writers = writers
 
-			// handle different table formats
-			if arg.Class == ClassGroup || (arg.Class == ClassGym && len(arg.Contest) == 0) {
-				startTime := parseTime(getText(cont, "td:nth-of-type(2)"))
-				dur := parseDur(getText(cont, "td:nth-of-type(3)"))
+					case 2:
+						startTime := parseTime(cell.Text())
+						newContest.StartTime = startTime
 
-				if omitFinishedContests == true && time.Now().After(startTime.Add(dur)) {
-					// break out of loop
-					isOver = true
-					return false
-				}
+					case 3:
+						duration := parseDuration(cell.Text())
+						newContest.Duration = duration
 
-				description := []string{}
-				cont.Find("td:nth-of-type(5) .small").Each(func(_ int, desc *goquery.Selection) {
-					description = append(description, clean(desc.Text()))
-				})
-
-				contests = append(contests, Contest{
-					Name:        clean(name.Text()),
-					Writers:     []string{},
-					StartTime:   startTime,
-					Duration:    dur,
-					RegCount:    RegistrationNotExists,
-					RegStatus:   RegistrationNotExists,
-					Description: description,
-					Arg:         contArg,
+					case 5:
+						cell.Find(".countdown").Remove()
+						if contArg.Class == ClassGym {
+							newContest.RegStatus = RegistrationNotExists
+							newContest.RegCount = RegistrationNotExists
+							description := strings.Split(clean(cell.Text()), "\n")
+							newContest.Description = description
+						} else {
+							// extract registration count
+							cntStr := getText(cell, ".contestParticipantCountLinkMargin")
+							if len(cntStr) > 1 {
+								regCount, _ := strconv.Atoi(cntStr[1:])
+								newContest.RegCount = regCount
+							}
+							// extract registration status
+							if cell.Find(".welldone").Length() != 0 {
+								newContest.RegStatus = RegistrationDone
+							} else if cell.Find("a").Not("a[title]").Length() > 0 {
+								newContest.RegStatus = RegistrationOpen
+							} else {
+								newContest.RegStatus = RegistrationClosed
+							}
+						}
+					}
 				})
 			} else {
-				startTime := parseTime(getText(cont, "td:nth-of-type(3)"))
-				dur := parseDur(getText(cont, "td:nth-of-type(4)"))
+				cont.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+					switch cellIdx {
+					case 0:
+						// remove all links from text
+						cell.Find("a").Remove()
+						newContest.Name = clean(cell.Text())
 
-				if omitFinishedContests == true && time.Now().After(startTime.Add(dur)) {
-					// break out of loop
-					isOver = true
-					return false
-				}
+					case 1:
+						startTime := parseTime(cell.Text())
+						newContest.StartTime = startTime
 
-				writers := strings.Split(getText(cont, "td:nth-of-type(2)"), "\n")
-				if len(writers[0]) == 0 {
-					// fix problem when no writers given
-					writers = []string{}
-				}
+					case 2:
+						duration := parseDuration(cell.Text())
+						newContest.Duration = duration
 
-				// find registration state in contest
-				status := cont.Find("td:nth-of-type(6)")
-				status.Find(".countdown").Remove()
-				var regStatus, regCount int
-				description := []string{}
-				if arg.Class == ClassGym {
-					regStatus = RegistrationNotExists
-					regCount = RegistrationNotExists
-					description = append(description, clean(status.Text()))
-				} else {
-					// extract registration count
-					cntStr := getText(cont, ".contestParticipantCountLinkMargin")
-					if len(cntStr) > 1 {
-						regCount, _ = strconv.Atoi(cntStr[1:])
+					case 4:
+						var description []string
+						cell.Find(".small").Each(func(_ int, val *goquery.Selection) {
+							description = append(description, clean(val.Text()))
+						})
+						newContest.Description = description
 					}
-					// extract registration status
-					if status.Find(".welldone").Length() != 0 {
-						regStatus = RegistrationDone
-					} else if status.Find("a").Not("a[title]").Length() > 0 {
-						regStatus = RegistrationOpen
-					} else {
-						regStatus = RegistrationClosed
-					}
-				}
-
-				contests = append(contests, Contest{
-					Name:        clean(name.Text()),
-					Writers:     writers,
-					StartTime:   startTime,
-					Duration:    dur,
-					RegCount:    regCount,
-					RegStatus:   regStatus,
-					Description: description,
-					Arg:         contArg,
 				})
+
+				newContest.Writers = nil
+				newContest.RegCount = RegistrationNotExists
+				newContest.RegStatus = RegistrationNotExists
 			}
+
+			// don't add contest row if contest is over, and omitFinishedContests is true.
+			if omitFinishedContests == true && time.Now().
+				After(newContest.StartTime.Add(newContest.Duration)) {
+				isOver = true
+				return false
+			}
+
+			contests = append(contests, newContest)
 			return true
 		})
 		if isOver == true {

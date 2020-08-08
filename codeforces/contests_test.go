@@ -168,7 +168,7 @@ func TestArgs_GetContests(t *testing.T) {
 					Duration:    time.Hour * 2,
 					RegCount:    722,
 					RegStatus:   RegistrationClosed,
-					Description: []string{},
+					Description: nil,
 					Arg:         Args{"7", "", "contest", ""},
 				},
 			},
@@ -181,7 +181,7 @@ func TestArgs_GetContests(t *testing.T) {
 			want: []Contest{
 				{
 					Name:        "2014 ACM-ICPC Vietnam National First Round",
-					Writers:     []string{},
+					Writers:     nil,
 					StartTime:   time.Date(2014, time.October, 12, 7, 0, 0, 0, time.UTC),
 					Duration:    time.Hour*5 + time.Minute*15,
 					RegCount:    RegistrationNotExists,
@@ -199,7 +199,7 @@ func TestArgs_GetContests(t *testing.T) {
 			want: []Contest{
 				{
 					Name:        "gym problems -2",
-					Writers:     []string{},
+					Writers:     nil,
 					StartTime:   time.Date(2016, time.July, 19, 6, 30, 0, 0, time.UTC),
 					Duration:    time.Hour * 4,
 					RegCount:    RegistrationNotExists,
@@ -209,7 +209,7 @@ func TestArgs_GetContests(t *testing.T) {
 				},
 				{
 					Name:        "gym problems",
-					Writers:     []string{},
+					Writers:     nil,
 					StartTime:   time.Date(2016, time.July, 18, 7, 0, 0, 0, time.UTC),
 					Duration:    time.Hour * 4,
 					RegCount:    RegistrationNotExists,
@@ -219,7 +219,7 @@ func TestArgs_GetContests(t *testing.T) {
 				},
 				{
 					Name:        "Al-Baath Training Camp 2016 - Advanced Contest",
-					Writers:     []string{},
+					Writers:     nil,
 					StartTime:   time.Date(2016, time.March, 12, 8, 30, 0, 0, time.UTC),
 					Duration:    time.Hour * 3,
 					RegCount:    RegistrationNotExists,
@@ -229,7 +229,7 @@ func TestArgs_GetContests(t *testing.T) {
 				},
 				{
 					Name:      "Al-Baath Training Camp 2016 - Beginners Contest",
-					Writers:   []string{},
+					Writers:   nil,
 					StartTime: time.Date(2016, time.March, 12, 8, 30, 0, 0, time.UTC),
 					Duration:  time.Hour * 3,
 					RegCount:  RegistrationNotExists,
@@ -240,7 +240,7 @@ func TestArgs_GetContests(t *testing.T) {
 				},
 				{
 					Name:        "Al-Baath Training day-10 Beginners",
-					Writers:     []string{},
+					Writers:     nil,
 					StartTime:   time.Date(2016, time.March, 2, 7, 30, 0, 0, time.UTC),
 					Duration:    time.Hour*2 + time.Minute*30,
 					RegCount:    RegistrationNotExists,
@@ -250,7 +250,7 @@ func TestArgs_GetContests(t *testing.T) {
 				},
 				{
 					Name:        "ALBAATH Rush day 9 Intermediate",
-					Writers:     []string{},
+					Writers:     nil,
 					StartTime:   time.Unix(0, 0).UTC(),
 					Duration:    time.Hour*2 + time.Minute*30,
 					RegCount:    RegistrationNotExists,
@@ -260,7 +260,7 @@ func TestArgs_GetContests(t *testing.T) {
 				},
 				{
 					Name:        "ALBAATH Rush day 9 Begginners",
-					Writers:     []string{},
+					Writers:     nil,
 					StartTime:   time.Unix(0, 0).UTC(),
 					Duration:    time.Hour*2 + time.Minute*30,
 					RegCount:    RegistrationNotExists,
