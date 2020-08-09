@@ -18,7 +18,7 @@ func init() {
 	usr := os.Getenv("CODEFORCES_USERNAME")
 	passwd := os.Getenv("CODEFORCES_PASSWORD")
 
-	Login(usr, passwd)
+	login(usr, passwd)
 }
 
 func Test_loginPage(t *testing.T) {
@@ -33,7 +33,7 @@ func Test_loginPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := LoginPage(); got != tt.want {
+			if got := loginPage(); got != tt.want {
 				t.Errorf("loginPage() = %v, want %v", got, tt.want)
 			}
 		})
@@ -169,7 +169,7 @@ func TestLogin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := Login(tt.args.usr, tt.args.passwd)
+			got, err := login(tt.args.usr, tt.args.passwd)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Login() error = %v, wantErr %v", err, tt.wantErr)
 				return

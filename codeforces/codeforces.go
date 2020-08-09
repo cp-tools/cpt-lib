@@ -59,8 +59,8 @@ func (arg Args) String() string {
 	return strings.Join(strings.Fields(str), " ")
 }
 
-// LoginPage returns link to login page
-func LoginPage() string {
+// loginPage returns link to login page
+func loginPage() string {
 	return fmt.Sprintf("%v/enter", hostURL)
 }
 
@@ -126,7 +126,7 @@ func Parse(str string) (Args, error) {
 	return Args{}, ErrInvalidSpecifier
 }
 
-// Login tries logging into codeforces using credentials passed.
+// login tries logging into codeforces using credentials passed.
 // Checks if any active session exists (in SessCln) before logging in.
 // If you wish to overwrite currently logged in session, set cookies
 // of SessCln to nil before logging in.
@@ -136,8 +136,8 @@ func Parse(str string) (Args, error) {
 //
 // By default, option 'remember me' is checked, ensuring the session
 // has expiry period of one month from date of last login.
-func Login(usr, passwd string) (string, error) {
-	link := LoginPage()
+func login(usr, passwd string) (string, error) {
+	link := loginPage()
 	page, err := Browser.PageE(link)
 	if err != nil {
 		return "", err
