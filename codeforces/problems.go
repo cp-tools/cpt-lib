@@ -3,7 +3,6 @@ package codeforces
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -79,18 +78,19 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer page.Close()
 
 	page.WaitLoad()
 	if msg := cE(page); msg != "" {
 		// shouldn't return any error if success
 		return nil, fmt.Errorf(msg)
 	}
-	body := page.Element("html").HTML()
+
+	doc, _ := goquery.NewDocumentFromReader(
+		strings.NewReader(page.Element("html").HTML()))
 
 	// to hold problem data
 	var probs []Problem
-
-	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
 	table := doc.Find(".problemindexholder")
 	table.Each(func(_ int, prob *goquery.Selection) {
 		probArg, _ := Parse(arg.Group + arg.Contest + prob.AttrOr("problemindex", ""))
@@ -149,6 +149,7 @@ func (arg Args) SubmitSolution(langID string, file string) error {
 	if err != nil {
 		return err
 	}
+	defer page.Close()
 
 	page.WaitLoad()
 	if msg := cE(page); msg != "" {
@@ -159,9 +160,9 @@ func (arg Args) SubmitSolution(langID string, file string) error {
 	// do the submitting here! (really simple)
 	page.Element(`select[name="programTypeId"]`).Select(langIDName)
 	page.Element(`input[name="sourceFile"]`).SetFiles(file)
+	wait := page.WaitRequestIdle()
 	page.Element(`input.submit`).Click()
-	time.Sleep(time.Millisecond * 100)
-	page.WaitLoad()
+	wait()
 
 	if msg := page.Elements(`.error.for__source`); len(msg) != 0 {
 		// static error message (exact submission done before)

@@ -81,19 +81,20 @@ func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer page.Close()
 
 	page.WaitLoad()
 	if msg := cE(page); msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
-	body := page.Element("html").HTML()
-
 	// @todo Add support for excluding unofficial submissions
 
 	var submissions []Submission
 	pages := findPagination(page)
 	for c := 1; c <= pages; c++ {
-		doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
+		doc, _ := goquery.NewDocumentFromReader(
+			strings.NewReader(page.Element("html").HTML()))
+
 		doc.Find("tr[data-submission-id]").Each(func(_ int, sub *goquery.Selection) {
 			var newSubmission Submission
 
@@ -146,7 +147,7 @@ func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
 
 		if c+1 <= pages {
 			cLink := fmt.Sprintf("%v/page/%d", link, c+1)
-			page, err := Browser.PageE(cLink)
+			err := page.NavigateE(cLink)
 			if err != nil {
 				return submissions, err
 			}
@@ -155,7 +156,6 @@ func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
 			if msg := cE(page); msg != "" {
 				return nil, fmt.Errorf(msg)
 			}
-			body = page.Element("html").HTML()
 		}
 	}
 	return submissions, nil
@@ -176,15 +176,17 @@ func (sub Submission) GetSourceCode() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer page.Close()
 
 	page.WaitLoad()
 	if msg := cE(page); msg != "" {
 		return "", fmt.Errorf(msg)
 	}
-	body := page.Element("html").HTML()
 
 	// extract source code from html body
-	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
+	doc, _ := goquery.NewDocumentFromReader(
+		strings.NewReader(page.Element("html").HTML()))
+
 	doc.Find("pre#program-source-text li").Each(func(_ int, ln *goquery.Selection) {
 		source += ln.Text() + "\n"
 	})

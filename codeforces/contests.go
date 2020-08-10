@@ -113,6 +113,7 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer page.Close()
 
 	page.WaitLoad()
 	if msg := cE(page); msg != "" {
@@ -148,18 +149,20 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer page.Close()
 
 	page.WaitLoad()
 	if msg := cE(page); msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
-	body := page.Element("html").HTML()
 
 	var contests []Contest
-	pages := findPagination(page)
-	for c := 1; c <= pages; c++ {
+	pagination := findPagination(page)
+	for c := 1; c <= pagination; c++ {
 		isOver := false
-		doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
+		doc, _ := goquery.NewDocumentFromReader(
+			strings.NewReader(page.Element("html").HTML()))
+
 		// upcoming contests table repeats every page.
 		// Remove it from all subsequent pages parsing.
 		var table *goquery.Selection
@@ -285,20 +288,19 @@ func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
 			break
 		}
 
-		if c+1 <= pages {
+		if c+1 <= pagination {
 			// remove ?complete=true from link
 			tmp := strings.TrimSuffix(link, "?complete=true")
 			cLink := fmt.Sprintf("%v/page/%d", tmp, c+1)
-			page, err := Browser.PageE(cLink)
+			err := page.NavigateE(cLink)
 			if err != nil {
-				return nil, err
+				return contests, err
 			}
 
 			page.WaitLoad()
 			if msg := cE(page); msg != "" {
-				return nil, fmt.Errorf(msg)
+				return contests, fmt.Errorf(msg)
 			}
-			body = page.Element("html").HTML()
 		}
 	}
 	return contests, nil
@@ -316,18 +318,18 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 	if err != nil {
 		return Dashboard{}, err
 	}
+	defer page.Close()
 
 	page.WaitLoad()
 	if msg := cE(page); msg != "" {
 		return Dashboard{}, fmt.Errorf(msg)
 	}
-	body := page.Element("html").HTML()
-
 	dashboard := Dashboard{}
 	dashboard.Material = make(map[string]string)
 
 	// extraction begins here!!
-	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
+	doc, _ := goquery.NewDocumentFromReader(
+		strings.NewReader(page.Element("html").HTML()))
 	// extract contest name
 	dashboard.Name = clean(doc.Find(".rtable th").Text())
 	// extract countdown to contest end
@@ -418,14 +420,16 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer page.Close()
 
 	page.WaitLoad()
 	if msg := cE(page); msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
-	body := page.Element("html").HTML()
 
-	doc, _ := goquery.NewDocumentFromReader(strings.NewReader(body))
+	doc, _ := goquery.NewDocumentFromReader(
+		strings.NewReader(page.Element("html").HTML()))
+
 	registerInfo := &RegisterInfo{
 		Name:  getText(doc.Selection, "h2"),
 		Terms: getText(doc.Selection, ".terms"),

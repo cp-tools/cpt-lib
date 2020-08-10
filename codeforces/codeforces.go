@@ -142,6 +142,7 @@ func login(usr, passwd string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer page.Close()
 
 	page.WaitLoad()
 	if msg := cE(page); msg != "" {
@@ -159,14 +160,13 @@ func login(usr, passwd string) (string, error) {
 	if page.Element("#remember").Property("checked").Bool() == false {
 		page.Element("#remember").Click()
 	}
+
+	wait := page.WaitRequestIdle()
 	page.Element(".submit").Click()
+	wait()
 
-	// race two selectors, wait till one resolves
-	errSelector := ".error.for__password"
-	el := page.Element(errSelector, "#header a[href^=\"/profile/\"]")
-	if el.Matches(errSelector) {
-		return "", ErrInvalidCredentials
+	if handle := findHandle(page); handle != "" {
+		return handle, nil
 	}
-
-	return el.Text(), nil
+	return "", ErrInvalidCredentials
 }
