@@ -1,7 +1,6 @@
 package atcoder
 
 import (
-	"os"
 	"reflect"
 	"testing"
 
@@ -13,12 +12,13 @@ func init() {
 	url := launcher.New().UserDataDir("user-data-dir").
 		Set("blink-settings", "imagesEnabled=false").Launch()
 	Browser = rod.New().ControlURL(url).Connect()
+	/*
+		// login to account for access to all other tests
+		usr := os.Getenv("ATCODER_USERNAME")
+		passwd := os.Getenv("ATCODER_PASSWORD")
 
-	// login to account for access to all other tests
-	usr := os.Getenv("ATCODER_USERNAME")
-	passwd := os.Getenv("ATCODER_PASSWORD")
-
-	login(usr, passwd)
+		login(usr, passwd)
+	*/
 }
 
 func Test_loginPage(t *testing.T) {
@@ -83,6 +83,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
+/*
 func Test_login(t *testing.T) {
 	type args struct {
 		usr    string
@@ -117,3 +118,4 @@ func Test_login(t *testing.T) {
 		})
 	}
 }
+*/

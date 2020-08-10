@@ -68,6 +68,7 @@ func Parse(str string) (Args, error) {
 	return Args{}, ErrInvalidSpecifier
 }
 
+/*
 func login(usr, passwd string) (string, error) {
 	link := loginPage()
 	page, err := Browser.PageE(link)
@@ -102,3 +103,4 @@ func login(usr, passwd string) (string, error) {
 	handle := findHandle(page)
 	return handle, nil
 }
+*/
