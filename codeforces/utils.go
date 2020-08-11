@@ -12,17 +12,26 @@ import (
 	"github.com/go-rod/rod"
 )
 
-func cE(page *rod.Page) string {
-	var msg string
-	body := page.Element("html").HTML()
+var (
+	selCSSNotif   = `.jGrowl-notification .message`
+	selCSSHandle  = `#header a[href^="/profile/"]`
+	selCSSCurrTab = `.second-level-menu-list .current`
+	selCSSFooter  = `#footer`
+	selCSSError   = `.error`
+)
 
-	msgRgx := `Codeforces\.showMessage\("(.+)"\);\s+Codeforces\.reformatTimes\(\);`
-	re := regexp.MustCompile(msgRgx)
-	tmp := re.FindStringSubmatch(body)
-	if tmp != nil {
-		msg = clean(tmp[1])
+func loadPage(link string) (*rod.Page, string, error) {
+	page, err := Browser.PageE(link)
+	if err != nil {
+		return nil, "", err
 	}
-	return msg
+
+	// footer is loaded last ig? I'm not sure
+	elm := page.Element(selCSSNotif, selCSSFooter)
+	if elm.Matches(selCSSNotif) {
+		return page, clean(elm.Text()), nil
+	}
+	return page, "", nil
 }
 
 func clean(str string) string {
@@ -50,28 +59,6 @@ func getText(sel *goquery.Selection, query string) string {
 func getAttr(sel *goquery.Selection, query, attr string) string {
 	str := sel.Find(query).AttrOr(attr, "")
 	return clean(str)
-}
-
-// findHandle scrapes handle from REQUEST body
-func findHandle(page *rod.Page) string {
-	elm := page.Elements("#header a[href^=\"/profile/\"]")
-	if len(elm) == 0 {
-		return ""
-	}
-
-	return elm.First().Text()
-}
-
-// findPagination returns number of pages of table
-// returns (1 if no pagination found)
-func findPagination(page *rod.Page) int {
-	val := page.Elements(".page-index a").Last()
-	if val == nil {
-		// no pagination found
-		return 1
-	}
-	num, _ := strconv.Atoi(val.Text())
-	return num
 }
 
 // if the time string is invalid, returns time corresponding to

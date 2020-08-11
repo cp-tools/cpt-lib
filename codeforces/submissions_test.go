@@ -70,6 +70,7 @@ func TestSubmission_sourceCodePage(t *testing.T) {
 func TestArgs_GetSubmissions(t *testing.T) {
 	type args struct {
 		handle string
+		count  int
 	}
 	tests := []struct {
 		name    string
@@ -81,7 +82,7 @@ func TestArgs_GetSubmissions(t *testing.T) {
 		{
 			name: "Test #1",
 			arg:  Args{"4", "", "contest", ""},
-			args: args{"cp-tools"},
+			args: args{"cp-tools", 3},
 			want: []Submission{
 				{
 					ID:        "81327550",
@@ -119,25 +120,13 @@ func TestArgs_GetSubmissions(t *testing.T) {
 					IsJudging: false,
 					Arg:       Args{"4", "b", "contest", ""},
 				},
-				{
-					ID:        "81011111",
-					When:      time.Date(2020, time.May, 23, 11, 45, 0, 0, time.UTC),
-					Who:       "cp-tools",
-					Problem:   "A - Watermelon",
-					Language:  "GNU C++17",
-					Verdict:   "Accepted",
-					Time:      "62 ms",
-					Memory:    "0 KB",
-					IsJudging: false,
-					Arg:       Args{"4", "a", "contest", ""},
-				},
 			},
 			wantErr: false,
 		},
 		{
 			name: "Test #2",
 			arg:  Args{"4", "b", "contest", ""},
-			args: args{"cp-tools"},
+			args: args{"cp-tools", -1},
 			want: []Submission{
 				{
 					ID:        "81012854",
@@ -157,7 +146,7 @@ func TestArgs_GetSubmissions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.arg.GetSubmissions(tt.args.handle)
+			got, err := tt.arg.GetSubmissions(tt.args.handle, tt.args.count)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.GetSubmissions() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -184,7 +173,7 @@ func TestSubmission_GetSourceCode(t *testing.T) {
 				`a=$*.transpose` + "\n" +
 				`x=s-a[0].inject(:+)` + "\n" +
 				`puts x<0||s>a[1].inject(:+) ?:NO:"YES` + "\n" +
-				`"+$*.map{|l,r|t=[r-l,x].min;x-=t;l+t}*" "`,
+				`"+$*.map{|l,r|t=[r-l,x].min;x-=t;l+t}*" "` + "\n",
 			wantErr: false,
 		},
 	}

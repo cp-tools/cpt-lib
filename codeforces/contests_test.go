@@ -99,6 +99,37 @@ func TestArgs_registerPage(t *testing.T) {
 	}
 }
 
+func TestArgs_dashboardPage(t *testing.T) {
+	tests := []struct {
+		name     string
+		arg      Args
+		wantLink string
+	}{
+		{
+			name:     "Test #1",
+			arg:      Args{"1234", "", "contest", ""},
+			wantLink: "https://codeforces.com/contest/1234",
+		},
+		{
+			name:     "Test #2",
+			arg:      Args{"100001", "", "gym", ""},
+			wantLink: "https://codeforces.com/gym/100001",
+		},
+		{
+			name:     "Test #3",
+			arg:      Args{"277493", "", "group", "MEqF8b6wBT"},
+			wantLink: "https://codeforces.com/group/MEqF8b6wBT/contest/277493",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if gotLink := tt.arg.DashboardPage(); gotLink != tt.wantLink {
+				t.Errorf("Args.dashboardPage() = %v, want %v", gotLink, tt.wantLink)
+			}
+		})
+	}
+}
+
 func TestArgs_GetCountdown(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -147,7 +178,7 @@ func TestArgs_GetCountdown(t *testing.T) {
 
 func TestArgs_GetContests(t *testing.T) {
 	type args struct {
-		omitFinishedContests bool
+		count int
 	}
 	tests := []struct {
 		name    string
@@ -159,7 +190,7 @@ func TestArgs_GetContests(t *testing.T) {
 		{
 			name: "Test #1",
 			arg:  Args{"7", "", "contest", ""},
-			args: args{false},
+			args: args{1},
 			want: []Contest{
 				{
 					Name:        "Codeforces Beta Round #7",
@@ -177,7 +208,7 @@ func TestArgs_GetContests(t *testing.T) {
 		{
 			name: "Test #2",
 			arg:  Args{"100499", "", "gym", ""},
-			args: args{false},
+			args: args{2},
 			want: []Contest{
 				{
 					Name:        "2014 ACM-ICPC Vietnam National First Round",
@@ -195,7 +226,7 @@ func TestArgs_GetContests(t *testing.T) {
 		{
 			name: "Test #3",
 			arg:  Args{"", "", "group", "7rY4CfQSjd"},
-			args: args{false},
+			args: args{-1},
 			want: []Contest{
 				{
 					Name:        "gym problems -2",
@@ -271,17 +302,10 @@ func TestArgs_GetContests(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		{
-			name:    "Test #4",
-			arg:     Args{"7", "", "contest", ""},
-			args:    args{true},
-			want:    nil,
-			wantErr: false,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.arg.GetContests(tt.args.omitFinishedContests)
+			got, err := tt.arg.GetContests(tt.args.count)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.GetContests() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -301,7 +325,12 @@ func TestArgs_RegisterForContest(t *testing.T) {
 		want    *RegisterInfo
 		wantErr bool
 	}{
-		// TODO: Implement tests for RegisterForContest()
+		{
+			name:    "Test #1",
+			arg:     Args{"4", "", "contest", ""},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -312,37 +341,6 @@ func TestArgs_RegisterForContest(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Args.RegisterForContest() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestArgs_dashboardPage(t *testing.T) {
-	tests := []struct {
-		name     string
-		arg      Args
-		wantLink string
-	}{
-		{
-			name:     "Test #1",
-			arg:      Args{"1234", "", "contest", ""},
-			wantLink: "https://codeforces.com/contest/1234",
-		},
-		{
-			name:     "Test #2",
-			arg:      Args{"100001", "", "gym", ""},
-			wantLink: "https://codeforces.com/gym/100001",
-		},
-		{
-			name:     "Test #3",
-			arg:      Args{"277493", "", "group", "MEqF8b6wBT"},
-			wantLink: "https://codeforces.com/group/MEqF8b6wBT/contest/277493",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.DashboardPage(); gotLink != tt.wantLink {
-				t.Errorf("Args.dashboardPage() = %v, want %v", gotLink, tt.wantLink)
 			}
 		})
 	}

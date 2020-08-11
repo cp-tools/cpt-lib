@@ -35,11 +35,6 @@ var (
 
 var (
 	hostURL = "https://codeforces.com"
-	/*
-		// SessCln should be set to desired session configuration.
-		// Ensure cookies, proxy protocol etc are set up if reqd.
-		SessCln *http.Client
-	*/
 
 	// Browser is the headless browser to use.
 	Browser *rod.Browser
@@ -138,20 +133,20 @@ func Parse(str string) (Args, error) {
 // has expiry period of one month from date of last login.
 func login(usr, passwd string) (string, error) {
 	link := loginPage()
-	page, err := Browser.PageE(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return "", err
 	}
 	defer page.Close()
 
-	page.WaitLoad()
-	if msg := cE(page); msg != "" {
+	if msg != "" {
+		// there shouldn't be any notification
 		return "", fmt.Errorf(msg)
 	}
 
 	// check if current user sesion is logged in
-	if handle := findHandle(page); handle != "" {
-		return handle, nil
+	if elm := page.Elements(selCSSHandle).First(); elm != nil {
+		return clean(elm.Text()), nil
 	}
 
 	// otherwise, login
@@ -160,13 +155,31 @@ func login(usr, passwd string) (string, error) {
 	if page.Element("#remember").Property("checked").Bool() == false {
 		page.Element("#remember").Click()
 	}
-
-	wait := page.WaitRequestIdle()
 	page.Element(".submit").Click()
-	wait()
 
-	if handle := findHandle(page); handle != "" {
-		return handle, nil
+	elm := page.Element(selCSSError, selCSSHandle)
+	if elm.Matches(selCSSError) {
+		return "", ErrInvalidCredentials
 	}
-	return "", ErrInvalidCredentials
+
+	return clean(elm.Text()), nil
+}
+
+func logout() error {
+	page, msg, err := loadPage(hostURL)
+	if err != nil {
+		return err
+	}
+	defer page.Close()
+
+	if msg != "" {
+		return fmt.Errorf(msg)
+	}
+
+	if page.HasMatches("a", "Logout") {
+		page.ElementMatches("a", "Logout").Click()
+		// page gives a notification on logout
+		page.Element(selCSSNotif)
+	}
+	return nil
 }

@@ -74,15 +74,13 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	}
 
 	link := arg.ProblemsPage()
-	page, err := Browser.PageE(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return nil, err
 	}
 	defer page.Close()
 
-	page.WaitLoad()
-	if msg := cE(page); msg != "" {
-		// shouldn't return any error if success
+	if msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
 
@@ -92,12 +90,12 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	// to hold problem data
 	var probs []Problem
 	table := doc.Find(".problemindexholder")
-	table.Each(func(_ int, prob *goquery.Selection) {
-		probArg, _ := Parse(arg.Group + arg.Contest + prob.AttrOr("problemindex", ""))
+	table.Each(func(_ int, row *goquery.Selection) {
+		probArg, _ := Parse(arg.Group + arg.Contest + row.AttrOr("problemindex", ""))
 
 		// sample tests of problem
 		var sampleTests []SampleTest
-		inp, out := prob.Find(".input"), prob.Find(".output")
+		inp, out := row.Find(".input"), row.Find(".output")
 		for i := 0; i < inp.Length(); i++ {
 			inpStr, _ := inp.Find("pre").Eq(i).Html()
 			outStr, _ := out.Find("pre").Eq(i).Html()
@@ -107,7 +105,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 			})
 		}
 
-		header := prob.Find(".header")
+		header := row.Find(".header")
 		probs = append(probs, Problem{
 			Name:        getText(header, ".title"),
 			TimeLimit:   clean(header.Find(".time-limit").Contents().Last().Text()),
@@ -145,35 +143,27 @@ func (arg Args) SubmitSolution(langID string, file string) error {
 	}
 
 	link := arg.ProblemsPage()
-	page, err := Browser.PageE(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return err
 	}
 	defer page.Close()
 
-	page.WaitLoad()
-	if msg := cE(page); msg != "" {
-		// shouldn't return any error if success
+	if msg != "" {
 		return fmt.Errorf(msg)
 	}
 
 	// do the submitting here! (really simple)
 	page.Element(`select[name="programTypeId"]`).Select(langIDName)
 	page.Element(`input[name="sourceFile"]`).SetFiles(file)
-	wait := page.WaitRequestIdle()
 	page.Element(`input.submit`).Click()
-	wait()
 
-	if msg := page.Elements(`.error.for__source`); len(msg) != 0 {
+	elm := page.Element(selCSSError, `tr[data-submission-id]`)
+
+	if elm.Matches(selCSSError) {
 		// static error message (exact submission done before)
-		return fmt.Errorf(msg.First().Text())
+		msg := clean(elm.Text())
+		return fmt.Errorf(msg)
 	}
-
-	msg := cE(page)
-	if strings.EqualFold(msg, "Solution to the problem "+arg.Problem+" has been submitted successfully") {
-		// submission successful!!
-		return nil
-	}
-
-	return fmt.Errorf(msg)
+	return nil
 }

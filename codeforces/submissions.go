@@ -73,91 +73,108 @@ func (sub Submission) SourceCodePage() (link string) {
 // of given user. Fetches details of all submissions of handle if args is nil.
 //
 // If handle is not set, fetches submissions of currently active user session.
-//
 // Due to a bug on codeforces, submissions in groups are not supported.
-func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
+//
+// Set 'count' to the maximum number of rows you want to be returned.
+// Set to -1 if you want to fetch all rows of data.
+func (arg Args) GetSubmissions(handle string, count int) ([]Submission, error) {
+	if count < 0 {
+		count = 1e9
+	}
+
 	link := arg.SubmissionsPage(handle)
-	page, err := Browser.PageE(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return nil, err
 	}
 	defer page.Close()
 
-	page.WaitLoad()
-	if msg := cE(page); msg != "" {
+	if msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
+
 	// @todo Add support for excluding unofficial submissions
 
-	var submissions []Submission
-	pages := findPagination(page)
-	for c := 1; c <= pages; c++ {
+	submissions := make([]Submission, 0)
+	// run till 'count' rows are parsed
+	for true {
 		doc, _ := goquery.NewDocumentFromReader(
 			strings.NewReader(page.Element("html").HTML()))
 
-		doc.Find("tr[data-submission-id]").Each(func(_ int, sub *goquery.Selection) {
-			var newSubmission Submission
-
-			subArg, _ := Parse(hostURL + getAttr(sub, "td:nth-of-type(4) a", "href"))
-			if arg.Problem != "" && arg.Problem != subArg.Problem {
-				return
+		table := doc.Find("tr[data-submission-id]")
+		table.EachWithBreak(func(_ int, row *goquery.Selection) bool {
+			if count == 0 {
+				// got required amount of rows. Break
+				return false
 			}
-			newSubmission.Arg = subArg
 
-			sub.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+			var submissionRow Submission
+			// extract contest args from html attr label
+			subArg, _ := Parse(hostURL + getAttr(row, "td:nth-of-type(4) a", "href"))
+			if arg.Problem != "" && arg.Problem != subArg.Problem {
+				return true
+			}
+			submissionRow.Arg = subArg
+
+			row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
 				switch cellIdx {
 				case 0:
 					id := clean(cell.Text())
-					newSubmission.ID = id
+					submissionRow.ID = id
 
 				case 1:
 					when := parseTime(clean(cell.Text()))
-					newSubmission.When = when
+					submissionRow.When = when
 
 				case 2:
 					who := clean(cell.Text())
-					newSubmission.Who = who
+					submissionRow.Who = who
 
 				case 3:
 					problem := clean(cell.Text())
-					newSubmission.Problem = problem
+					submissionRow.Problem = problem
 
 				case 4:
 					language := clean(cell.Text())
-					newSubmission.Language = language
+					submissionRow.Language = language
 
 				case 5:
 					isJudging := cell.AttrOr("waiting", "") == "true"
-					newSubmission.IsJudging = isJudging
+					submissionRow.IsJudging = isJudging
 
 					verdict := clean(cell.Text())
-					newSubmission.Verdict = verdict
+					submissionRow.Verdict = verdict
 
 				case 6:
 					time := clean(cell.Text())
-					newSubmission.Time = time
+					submissionRow.Time = time
 
 				case 7:
 					memory := clean(cell.Text())
-					newSubmission.Memory = memory
+					submissionRow.Memory = memory
 				}
 			})
-			submissions = append(submissions, newSubmission)
+
+			submissions = append(submissions, submissionRow)
+			count--
+			return true
 		})
 
-		if c+1 <= pages {
-			cLink := fmt.Sprintf("%v/page/%d", link, c+1)
-			err := page.NavigateE(cLink)
-			if err != nil {
-				return submissions, err
-			}
-
-			page.WaitLoad()
-			if msg := cE(page); msg != "" {
-				return nil, fmt.Errorf(msg)
-			}
+		if count == 0 {
+			break
 		}
+
+		// navigate to next page
+		if !page.HasMatches(".pagination li", "→") {
+			// no more pages more left. Break
+			break
+		}
+
+		// click navigation button and wait till loads
+		page.ElementMatches(".pagination li", "→").Click()
+		page.Element(selCSSFooter)
 	}
+
 	return submissions, nil
 }
 
@@ -167,19 +184,18 @@ func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
 //
 // Due to a bug on codeforces, groups are not supported.
 func (sub Submission) GetSourceCode() (string, error) {
-	var source string
 	if len(sub.Arg.Contest) == 0 || len(sub.ID) == 0 {
 		return "", ErrInvalidSpecifier
 	}
+
 	link := sub.SourceCodePage()
-	page, err := Browser.PageE(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return "", err
 	}
 	defer page.Close()
 
-	page.WaitLoad()
-	if msg := cE(page); msg != "" {
+	if msg != "" {
 		return "", fmt.Errorf(msg)
 	}
 
@@ -187,8 +203,10 @@ func (sub Submission) GetSourceCode() (string, error) {
 	doc, _ := goquery.NewDocumentFromReader(
 		strings.NewReader(page.Element("html").HTML()))
 
-	doc.Find("pre#program-source-text li").Each(func(_ int, ln *goquery.Selection) {
+	source := ""
+	codeBlock := doc.Find("pre#program-source-text li")
+	codeBlock.Each(func(_ int, ln *goquery.Selection) {
 		source += ln.Text() + "\n"
 	})
-	return clean(source), nil
+	return source, nil
 }
