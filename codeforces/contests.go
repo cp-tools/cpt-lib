@@ -422,7 +422,6 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer page.Close()
 
 	if msg != "" {
 		return nil, fmt.Errorf(msg)
@@ -435,6 +434,7 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 		Name:  getText(doc.Selection, "h2"),
 		Terms: getText(doc.Selection, ".terms"),
 		Register: func() error {
+			defer page.Close()
 			page.Element(".submit").Click()
 			page.Element(selCSSFooter)
 			return nil
