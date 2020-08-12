@@ -7,12 +7,24 @@ import (
 	"github.com/go-rod/rod"
 )
 
-func cE(page *rod.Page) string {
-	elm := page.Elements(".alert-danger").First()
-	if elm == nil {
-		return ""
+var (
+	selCSSHandle = `.navbar-right>li:last-child a`
+	selCSSFooter = `footer.footer`
+	selCSSNotif  = `.alert`
+)
+
+func loadPage(link string) (*rod.Page, string, error) {
+	page, err := Browser.PageE(link)
+	if err != nil {
+		return nil, "", err
 	}
-	return clean(elm.Text())
+
+	// footer is loaded last ig? not sure
+	elm := page.Element(selCSSNotif, selCSSFooter)
+	if elm.Matches(selCSSNotif) {
+		return page, clean(elm.Text()), nil
+	}
+	return page, "", nil
 }
 
 func clean(str string) string {
@@ -28,13 +40,4 @@ func clean(str string) string {
 	// replace any space character space
 	re = regexp.MustCompile(`\p{Z}`)
 	return re.ReplaceAllString(str, " ")
-}
-
-func findHandle(page *rod.Page) string {
-	elm := page.Elements(".navbar-right > li")
-	if len(elm) != 2 {
-		return ""
-	}
-	handle := elm.Last().Elements("a").First().Text()
-	return clean(handle)
 }

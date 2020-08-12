@@ -1,6 +1,7 @@
 package atcoder
 
 import (
+	"os"
 	"reflect"
 	"testing"
 
@@ -8,17 +9,34 @@ import (
 	"github.com/go-rod/rod/lib/launcher"
 )
 
-func init() {
-	url := launcher.New().UserDataDir("user-data-dir").
-		Set("blink-settings", "imagesEnabled=false").Launch()
-	Browser = rod.New().ControlURL(url).Connect()
-	/*
-		// login to account for access to all other tests
+func TestMain(m *testing.M) {
+	_, mode := os.LookupEnv("LOCAL_MODE")
+
+	l := launcher.New().UserDataDir("user-data-dir").
+		Set("blink-settings", "imagesEnabled=false")
+	if mode {
+		l.Headless(false)
+	}
+	Browser = rod.New().ControlURL(l.Launch()).Connect()
+
+	if !mode {
+		// setup login access to use
 		usr := os.Getenv("ATCODER_USERNAME")
 		passwd := os.Getenv("ATCODER_PASSWORD")
-
 		login(usr, passwd)
-	*/
+	}
+
+	exitCode := m.Run()
+
+	// logout current user
+	if !mode {
+		logout()
+	}
+
+	// close browser instance
+	Browser.Close()
+
+	os.Exit(exitCode)
 }
 
 func Test_loginPage(t *testing.T) {
@@ -82,40 +100,3 @@ func TestParse(t *testing.T) {
 		})
 	}
 }
-
-/*
-func Test_login(t *testing.T) {
-	type args struct {
-		usr    string
-		passwd string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
-	}{
-		{
-			name: "Login to cptools",
-			args: args{
-				os.Getenv("ATCODER_USERNAME"),
-				os.Getenv("ATCODER_PASSWORD"),
-			},
-			want:    "cptools",
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := login(tt.args.usr, tt.args.passwd)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("login() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("login() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-*/
