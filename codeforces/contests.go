@@ -1,9 +1,8 @@
 package codeforces
 
 import (
-	"bytes"
 	"fmt"
-	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -110,16 +109,20 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 	}
 
 	link := arg.CountdownPage()
-	resp, err := SessCln.Get(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return 0, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
+	defer page.Close()
+
+	if msg != "" {
+		// there should be no notification
 		return 0, fmt.Errorf(msg)
 	}
 
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	doc, _ := goquery.NewDocumentFromReader(
+		strings.NewReader(page.Element("html").HTML()))
+
 	val := doc.Find("span.countdown>span").AttrOr("title", "")
 	if len(val) == 0 {
 		val = doc.Find("span.countdown").Text()
@@ -135,163 +138,173 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 // on specified data in Args. Expects arg.Class to be configured
 // to fetch respective contest details.
 //
-// Set 'omitFinishedContests' to true to exclude finished contests.
-func (arg Args) GetContests(omitFinishedContests bool) ([]Contest, error) {
+// Set 'count' to the maximum number of rows you want to be returned.
+// Set to -1 if you want to fetch all rows of data.
+func (arg Args) GetContests(count int) ([]Contest, error) {
 	// MUST define Class type.
 	if arg.Class != ClassGym && arg.Class != ClassGroup && arg.Class != ClassContest {
 		return nil, ErrInvalidSpecifier
 	}
 
+	if count < 0 {
+		// is this large enough?
+		count = 1e9
+	}
+
 	link := arg.ContestsPage()
-	resp, err := SessCln.Get(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return nil, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
+	defer page.Close()
+
+	if msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
 
-	var contests []Contest
-	pages := findPagination(body)
-	for c := 1; c <= pages; c++ {
-		isOver := false
-		doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
-		// upcoming contests table repeats every page.
-		// Remove it from all subsequent pages parsing.
-		var table *goquery.Selection
-		if c == 1 {
+	contests := make([]Contest, 0)
+	// run till 'count' rows are parsed
+	for true {
+		doc, _ := goquery.NewDocumentFromReader(
+			strings.NewReader(page.Element("html").HTML()))
+
+		table := new(goquery.Selection)
+		if doc.Find(".pagination span.active").AttrOr("pageindex", "1") == "1" {
+			// include the upcoming contests table too
 			table = doc.Find("tr[data-contestid]")
 		} else {
-			table = doc.Find(".datatable").Find("tr[data-contestid]")
+			// exclude upcoming contests table
+			table = doc.Find(".datatable").
+				Eq(1).Find("tr[data-contestid]")
 		}
 
-		table.EachWithBreak(func(_ int, cont *goquery.Selection) bool {
+		table.EachWithBreak(func(_ int, row *goquery.Selection) bool {
+			if count == 0 {
+				// Got required amount of rows. Break
+				return false
+			}
+
+			// parse duration string (using ugly regex)
+			parseDuration := func(str string) time.Duration {
+				re := regexp.MustCompile(`(?:(\d+):)?(\d+):(\d+)`)
+				val := re.FindStringSubmatch(str)
+				d, _ := strconv.Atoi(val[1])
+				h, _ := strconv.Atoi(val[2])
+				m, _ := strconv.Atoi(val[3])
+				return time.Duration(d*1440+h*60+m) * time.Minute
+			}
+
+			var contestRow Contest
 			// extract contest args from html attr label
-			contArg, _ := Parse(clean(arg.Group + cont.AttrOr("data-contestid", "")))
-
-			// remove links from contest name
-			name := cont.Find("td:nth-of-type(1)")
-			name.Find("a").Remove()
-
-			if len(arg.Contest) != 0 && arg.Contest != contArg.Contest {
-				// skip current contest data
-				// required because of selection of group contest
+			contArg, _ := Parse(arg.Group + row.AttrOr("data-contestid", ""))
+			if arg.Contest != "" && arg.Contest != contArg.Contest {
+				// contest id is specified to fetch. This contest doesn't match it.
 				return true
 			}
+			contestRow.Arg = contArg
 
-			// extract duration from contest length
-			parseDur := func(str string) time.Duration {
-				d, h, m := 0, 0, 0
-				// format - days:hours:minutes
-				_, err := fmt.Sscanf(str, "%d:%d:%d", &d, &h, &m)
-				if err != nil {
-					d, h, m = 0, 0, 0
-					// format - hours:minutes
-					fmt.Sscanf(str, "%d:%d", &h, &m)
-				}
-				dur := time.Duration(d*1440+h*60+m) * time.Minute
-				return dur
-			}
+			// the table format for contests is different from groups and gyms/contests.
+			if contArg.Class == ClassContest || (contArg.Class == ClassGym && contArg.Contest != "") {
+				row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+					switch cellIdx {
+					case 0:
+						// remove all links from text
+						cell.Find("a").Remove()
+						contestRow.Name = clean(cell.Text())
 
-			// handle different table formats
-			if arg.Class == ClassGroup || (arg.Class == ClassGym && len(arg.Contest) == 0) {
-				startTime := parseTime(getText(cont, "td:nth-of-type(2)"))
-				dur := parseDur(getText(cont, "td:nth-of-type(3)"))
+					case 1:
+						writers := strings.Split(clean(cell.Text()), "\n")
+						if writers[0] == "" {
+							// no writers are specified. Set slice to nil
+							writers = nil
+						}
 
-				if omitFinishedContests == true && time.Now().After(startTime.Add(dur)) {
-					// break out of loop
-					isOver = true
-					return false
-				}
+						contestRow.Writers = writers
 
-				description := []string{}
-				cont.Find("td:nth-of-type(5) .small").Each(func(_ int, desc *goquery.Selection) {
-					description = append(description, clean(desc.Text()))
-				})
+					case 2:
+						startTime := parseTime(cell.Text())
+						contestRow.StartTime = startTime
 
-				contests = append(contests, Contest{
-					Name:        clean(name.Text()),
-					Writers:     []string{},
-					StartTime:   startTime,
-					Duration:    dur,
-					RegCount:    RegistrationNotExists,
-					RegStatus:   RegistrationNotExists,
-					Description: description,
-					Arg:         contArg,
+					case 3:
+						duration := parseDuration(cell.Text())
+						contestRow.Duration = duration
+
+					case 5:
+						cell.Find(".countdown").Remove()
+						if contArg.Class == ClassGym {
+							contestRow.RegStatus = RegistrationNotExists
+							contestRow.RegCount = RegistrationNotExists
+							description := strings.Split(clean(cell.Text()), "\n")
+							contestRow.Description = description
+						} else {
+							// extract registration count
+							cntStr := getText(cell, ".contestParticipantCountLinkMargin")
+							if len(cntStr) > 1 {
+								regCount, _ := strconv.Atoi(cntStr[1:])
+								contestRow.RegCount = regCount
+							}
+							// extract registration status
+							if cell.Find(".welldone").Length() != 0 {
+								contestRow.RegStatus = RegistrationDone
+							} else if cell.Find("a").Not("a[title]").Length() > 0 {
+								contestRow.RegStatus = RegistrationOpen
+							} else {
+								contestRow.RegStatus = RegistrationClosed
+							}
+						}
+					}
 				})
 			} else {
-				startTime := parseTime(getText(cont, "td:nth-of-type(3)"))
-				dur := parseDur(getText(cont, "td:nth-of-type(4)"))
+				row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+					switch cellIdx {
+					case 0:
+						// remove all links from text
+						cell.Find("a").Remove()
+						contestRow.Name = clean(cell.Text())
 
-				if omitFinishedContests == true && time.Now().After(startTime.Add(dur)) {
-					// break out of loop
-					isOver = true
-					return false
-				}
+					case 1:
+						startTime := parseTime(cell.Text())
+						contestRow.StartTime = startTime
 
-				writers := strings.Split(getText(cont, "td:nth-of-type(2)"), "\n")
-				if len(writers[0]) == 0 {
-					// fix problem when no writers given
-					writers = []string{}
-				}
+					case 2:
+						duration := parseDuration(cell.Text())
+						contestRow.Duration = duration
 
-				// find registration state in contest
-				status := cont.Find("td:nth-of-type(6)")
-				status.Find(".countdown").Remove()
-				var regStatus, regCount int
-				description := []string{}
-				if arg.Class == ClassGym {
-					regStatus = RegistrationNotExists
-					regCount = RegistrationNotExists
-					description = append(description, clean(status.Text()))
-				} else {
-					// extract registration count
-					cntStr := getText(cont, ".contestParticipantCountLinkMargin")
-					if len(cntStr) > 1 {
-						regCount, _ = strconv.Atoi(cntStr[1:])
+					case 4:
+						var description []string
+						cell.Find(".small").Each(func(_ int, val *goquery.Selection) {
+							description = append(description, clean(val.Text()))
+						})
+						contestRow.Description = description
 					}
-					// extract registration status
-					if status.Find(".welldone").Length() != 0 {
-						regStatus = RegistrationDone
-					} else if status.Find("a").Not("a[title]").Length() > 0 {
-						regStatus = RegistrationOpen
-					} else {
-						regStatus = RegistrationClosed
-					}
-				}
-
-				contests = append(contests, Contest{
-					Name:        clean(name.Text()),
-					Writers:     writers,
-					StartTime:   startTime,
-					Duration:    dur,
-					RegCount:    regCount,
-					RegStatus:   regStatus,
-					Description: description,
-					Arg:         contArg,
 				})
+
+				contestRow.Writers = nil
+				contestRow.RegCount = RegistrationNotExists
+				contestRow.RegStatus = RegistrationNotExists
 			}
+
+			contests = append(contests, contestRow)
+			count--
 			return true
 		})
-		if isOver == true {
+
+		if count == 0 {
+			// got required amount of rows. Break
 			break
 		}
 
-		if c+1 <= pages {
-			// remove ?complete=true from link
-			tmp := strings.TrimSuffix(link, "?complete=true")
-			cLink := fmt.Sprintf("%v/page/%d", tmp, c+1)
-			resp, err = SessCln.Get(cLink)
-			if err != nil {
-				return nil, err
-			}
-			body, msg = parseResp(resp)
-			if len(msg) != 0 {
-				return nil, fmt.Errorf(msg)
-			}
+		// navigate to next page
+		if !page.HasMatches(".pagination li", "→") {
+			// no more pages more left. Break
+			break
 		}
+
+		// click navigation button and wait till loads
+		page.ElementMatches(".pagination li", "→").Click()
+		page.Element(selCSSFooter)
 	}
+
 	return contests, nil
 }
 
@@ -303,84 +316,87 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 	}
 
 	link := arg.DashboardPage()
-	resp, err := SessCln.Get(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return Dashboard{}, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
+	defer page.Close()
+
+	if msg != "" {
 		return Dashboard{}, fmt.Errorf(msg)
 	}
 
-	dashboard := Dashboard{}
-	dashboard.Material = make(map[string]string)
+	doc, _ := goquery.NewDocumentFromReader(
+		strings.NewReader(page.Element("html").HTML()))
 
-	// extraction begins here!!
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	var dashboard Dashboard
+	dashboard.Material = make(map[string]string)
 	// extract contest name
-	dashboard.Name = getText(doc.Selection, ".rtable th")
+	dashboard.Name = clean(doc.Find(".rtable th").Text())
 	// extract countdown to contest end
-	if str := getText(doc.Selection, ".countdown"); len(str) != 0 {
+	if true {
+		str := clean(doc.Find(".countdown").Text())
 		var h, m, s int
 		fmt.Sscanf(str, "%d:%d:%d", &h, &m, &s)
-		dashboard.Countdown = time.Duration(h*3600+m*60+s) * time.Second
-	} else {
-		dashboard.Countdown = time.Second * 0
+		countdown := time.Duration(h*3600+m*60+s) * time.Second
+		dashboard.Countdown = countdown
 	}
 
 	// extract problems data
-	probTable := doc.Find(".problems tr").Has("td")
-	probTable.Each(func(_ int, prob *goquery.Selection) {
+	table := doc.Find(".problems tr").Has("td")
+	table.Each(func(_ int, row *goquery.Selection) {
+		var problemRow Problem
+
 		// what do I do if there is an error?
-		probArg, _ := Parse(hostURL + getAttr(prob, "td:nth-of-type(1) a", "href"))
-
-		// append if matches criteria
-		if len(arg.Problem) == 0 || arg.Problem == probArg.Problem {
-			// extract timelimit/memory limit from problem data
-			conSel := prob.Find("td:nth-of-type(2) .notice")
-			constraints := clean(conSel.Contents().Last().Text())
-
-			// extract inp/out stream data.
-			dataStream := getText(conSel, "div")
-			var inpStream, outStream string
-			if dataStream == "standard input/output" {
-				inpStream = "standard input"
-				outStream = "standard output"
-			} else {
-				inpStream = strings.Split(dataStream, "/")[0]
-				outStream = strings.Split(dataStream, "/")[1]
-			}
-
-			// extract solve status
-			var solveStatus int
-			if prob.AttrOr("class", "") == "accepted-problem" {
-				solveStatus = SolveAccepted
-			} else if prob.AttrOr("class", "") == "rejected-problem" {
-				solveStatus = SolveRejected
-			} else {
-				solveStatus = SolveNotAttempted
-			}
-
-			// extract solve count
-			var solveCount int
-			sc := getText(prob, "td:nth-of-type(4)")
-			if len(sc) > 1 {
-				// remove the 'x' prefix
-				solveCount, _ = strconv.Atoi(sc[1:])
-			}
-
-			dashboard.Problem = append(dashboard.Problem, Problem{
-				Name:        getText(prob, "td:nth-of-type(2) a"),
-				TimeLimit:   strings.Split(constraints, ", ")[0],
-				MemoryLimit: strings.Split(constraints, ", ")[1],
-				InpStream:   inpStream,
-				OutStream:   outStream,
-				SolveCount:  solveCount,
-				SolveStatus: solveStatus,
-				Arg:         probArg,
-			})
+		probArg, _ := Parse(hostURL + row.Find("td a").AttrOr("href", ""))
+		if arg.Problem != "" && arg.Problem != probArg.Problem {
+			return
 		}
+		problemRow.Arg = probArg
+
+		// extract solve status
+		switch row.AttrOr("class", "") {
+		case "accepted-problem":
+			problemRow.SolveStatus = SolveAccepted
+		case "rejected-problem":
+			problemRow.SolveStatus = SolveRejected
+		default:
+			problemRow.SolveStatus = SolveNotAttempted
+		}
+
+		row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+			switch cellIdx {
+			case 1:
+				conSel := cell.Find(".notice")
+				// extract time/memory limit from problem
+				constraints := clean(conSel.Contents().Last().Text())
+				problemRow.TimeLimit = strings.Split(constraints, ", ")[0]
+				problemRow.MemoryLimit = strings.Split(constraints, ", ")[1]
+
+				// extract input/output stream.
+				if sval := getText(conSel, "div"); sval == "standard input/output" {
+					problemRow.InpStream = "standard input"
+					problemRow.OutStream = "standard output"
+				} else {
+					problemRow.InpStream = strings.Split(sval, "/")[0]
+					problemRow.OutStream = strings.Split(sval, "/")[1]
+				}
+
+				name := cell.Find("a").Text()
+				problemRow.Name = name
+
+			case 3:
+				solveCount := 0
+				if sval := clean(cell.Text()); len(sval) > 1 {
+					// remove the 'x' prefix from x123 count
+					solveCount, _ = strconv.Atoi(sval[1:])
+				}
+				problemRow.SolveCount = solveCount
+			}
+		})
+		dashboard.Problem = append(dashboard.Problem, problemRow)
 	})
+
 	// extract contest material
 	doc.Find("#sidebar li a").Each(func(_ int, data *goquery.Selection) {
 		href := data.AttrOr("href", "")
@@ -402,35 +418,26 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 	}
 
 	link := arg.RegisterPage()
-	resp, err := SessCln.Get(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return nil, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
+
+	if msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
 
-	// hidden form data
-	csrf := findCsrf(body)
-	ftaa := genRandomString(18)
-	bfaa := genRandomString(32)
+	doc, _ := goquery.NewDocumentFromReader(
+		strings.NewReader(page.Element("html").HTML()))
 
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	registerInfo := &RegisterInfo{
 		Name:  getText(doc.Selection, "h2"),
 		Terms: getText(doc.Selection, ".terms"),
 		Register: func() error {
-			_, err := SessCln.PostForm(link, url.Values{
-				"csrf_token": {csrf},
-				"ftaa":       {ftaa},
-				"bfaa":       {bfaa},
-				"action":     {"formSubmitted"},
-				"backUrl":    {""},
-				"takePartAs": {"personal"},
-				"_tta":       {"176"},
-			})
-			return err
+			page.Element(".submit").Click()
+			page.Element(`.contestList`)
+			defer page.Close()
+			return nil
 		},
 	}
 	return registerInfo, nil

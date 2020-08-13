@@ -1,9 +1,8 @@
 package codeforces
 
 import (
-	"bytes"
 	"fmt"
-	"net/http"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -50,7 +49,7 @@ func (arg Args) SubmissionsPage(handle string) (link string) {
 	} else {
 		if len(handle) == 0 {
 			// I think this is a bad idea....
-			handle, _ = Login("", "")
+			handle, _ = login("", "")
 		}
 		link = fmt.Sprintf("%v/submissions/%v",
 			hostURL, handle)
@@ -74,63 +73,108 @@ func (sub Submission) SourceCodePage() (link string) {
 // of given user. Fetches details of all submissions of handle if args is nil.
 //
 // If handle is not set, fetches submissions of currently active user session.
-//
 // Due to a bug on codeforces, submissions in groups are not supported.
-func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
+//
+// Set 'count' to the maximum number of rows you want to be returned.
+// Set to -1 if you want to fetch all rows of data.
+func (arg Args) GetSubmissions(handle string, count int) ([]Submission, error) {
+	if count < 0 {
+		count = 1e9
+	}
+
 	link := arg.SubmissionsPage(handle)
-	resp, err := SessCln.Get(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return nil, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		// shouldn't return any error on success
+	defer page.Close()
+
+	if msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
 
 	// @todo Add support for excluding unofficial submissions
 
-	var submissions []Submission
-	pages := findPagination(body)
-	for c := 1; c <= pages; c++ {
-		doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
+	submissions := make([]Submission, 0)
+	// run till 'count' rows are parsed
+	for true {
+		doc, _ := goquery.NewDocumentFromReader(
+			strings.NewReader(page.Element("html").HTML()))
+
 		table := doc.Find("tr[data-submission-id]")
-		table.Each(func(_ int, sub *goquery.Selection) {
-			probLk := hostURL + getAttr(sub, "td:nth-of-type(4) a", "href")
-			subArg, _ := Parse(probLk)
-
-			if len(arg.Problem) == 0 || arg.Problem == subArg.Problem {
-				// parse various details
-				isJudging := getAttr(sub, "td:nth-of-type(6)", "waiting") == "true"
-				when := parseTime(getText(sub, "td:nth-of-type(2)"))
-
-				submissions = append(submissions, Submission{
-					ID:       getText(sub, "td:nth-of-type(1)"),
-					When:     when,
-					Who:      getText(sub, "td:nth-of-type(3)"),
-					Problem:  getText(sub, "td:nth-of-type(4)"),
-					Language: getText(sub, "td:nth-of-type(5)"),
-					Verdict:  getText(sub, "td:nth-of-type(6)"),
-					Time:     getText(sub, "td:nth-of-type(7)"),
-					Memory:   getText(sub, "td:nth-of-type(8)"),
-
-					IsJudging: isJudging,
-					Arg:       subArg,
-				})
+		table.EachWithBreak(func(_ int, row *goquery.Selection) bool {
+			if count == 0 {
+				// got required amount of rows. Break
+				return false
 			}
+
+			var submissionRow Submission
+			// extract contest args from html attr label
+			subArg, _ := Parse(hostURL + getAttr(row, "td:nth-of-type(4) a", "href"))
+			if arg.Problem != "" && arg.Problem != subArg.Problem {
+				return true
+			}
+			submissionRow.Arg = subArg
+
+			row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+				switch cellIdx {
+				case 0:
+					id := clean(cell.Text())
+					submissionRow.ID = id
+
+				case 1:
+					when := parseTime(clean(cell.Text()))
+					submissionRow.When = when
+
+				case 2:
+					who := clean(cell.Text())
+					submissionRow.Who = who
+
+				case 3:
+					problem := clean(cell.Text())
+					submissionRow.Problem = problem
+
+				case 4:
+					language := clean(cell.Text())
+					submissionRow.Language = language
+
+				case 5:
+					isJudging := cell.AttrOr("waiting", "") == "true"
+					submissionRow.IsJudging = isJudging
+
+					verdict := clean(cell.Text())
+					submissionRow.Verdict = verdict
+
+				case 6:
+					time := clean(cell.Text())
+					submissionRow.Time = time
+
+				case 7:
+					memory := clean(cell.Text())
+					submissionRow.Memory = memory
+				}
+			})
+
+			submissions = append(submissions, submissionRow)
+			count--
+			return true
 		})
-		if c+1 <= pages {
-			cLink := fmt.Sprintf("%v/page/%d", link, c+1)
-			resp, err = SessCln.Get(cLink)
-			if err != nil {
-				return nil, err
-			}
-			body, msg = parseResp(resp)
-			if len(msg) != 0 {
-				return nil, fmt.Errorf(msg)
-			}
+
+		if count == 0 {
+			break
 		}
+
+		// navigate to next page
+		if !page.HasMatches(".pagination li", "→") {
+			// no more pages more left. Break
+			break
+		}
+
+		// click navigation button and wait till loads
+		page.ElementMatches(".pagination li", "→").Click()
+		page.Element(selCSSFooter)
 	}
+
 	return submissions, nil
 }
 
@@ -140,29 +184,29 @@ func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
 //
 // Due to a bug on codeforces, groups are not supported.
 func (sub Submission) GetSourceCode() (string, error) {
-	var source string
 	if len(sub.Arg.Contest) == 0 || len(sub.ID) == 0 {
 		return "", ErrInvalidSpecifier
 	}
 
 	link := sub.SourceCodePage()
-FETCH:
-	resp, err := SessCln.Get(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
-		return source, err
+		return "", err
 	}
-	if resp.StatusCode == http.StatusTooManyRequests {
-		// sleep for 4 seconds before resending request
-		time.Sleep(time.Second * 4)
-		goto FETCH
+	defer page.Close()
+
+	if msg != "" {
+		return "", fmt.Errorf(msg)
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		// msg should be length 0 if success
-		return source, fmt.Errorf(msg)
-	}
+
 	// extract source code from html body
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
-	source = doc.Find("pre#program-source-text").Text()
+	doc, _ := goquery.NewDocumentFromReader(
+		strings.NewReader(page.Element("html").HTML()))
+
+	source := ""
+	codeBlock := doc.Find("pre#program-source-text li")
+	codeBlock.Each(func(_ int, ln *goquery.Selection) {
+		source += ln.Text() + "\n"
+	})
 	return source, nil
 }

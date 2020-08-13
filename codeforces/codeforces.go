@@ -2,10 +2,10 @@ package codeforces
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/go-rod/rod"
 )
 
 type (
@@ -35,9 +35,9 @@ var (
 
 var (
 	hostURL = "https://codeforces.com"
-	// SessCln should be set to desired session configuration.
-	// Ensure cookies, proxy protocol etc are set up if reqd.
-	SessCln *http.Client
+
+	// Browser is the headless browser to use.
+	Browser *rod.Browser
 )
 
 func (arg Args) String() string {
@@ -54,8 +54,8 @@ func (arg Args) String() string {
 	return strings.Join(strings.Fields(str), " ")
 }
 
-// LoginPage returns link to login page
-func LoginPage() string {
+// loginPage returns link to login page
+func loginPage() string {
 	return fmt.Sprintf("%v/enter", hostURL)
 }
 
@@ -121,7 +121,7 @@ func Parse(str string) (Args, error) {
 	return Args{}, ErrInvalidSpecifier
 }
 
-// Login tries logging into codeforces using credentials passed.
+// login tries logging into codeforces using credentials passed.
 // Checks if any active session exists (in SessCln) before logging in.
 // If you wish to overwrite currently logged in session, set cookies
 // of SessCln to nil before logging in.
@@ -131,47 +131,55 @@ func Parse(str string) (Args, error) {
 //
 // By default, option 'remember me' is checked, ensuring the session
 // has expiry period of one month from date of last login.
-func Login(usr, passwd string) (string, error) {
-	link := LoginPage()
-	resp, err := SessCln.Get(link)
+func login(usr, passwd string) (string, error) {
+	link := loginPage()
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return "", err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		return "", err
+	defer page.Close()
+
+	if msg != "" {
+		// there shouldn't be any notification
+		return "", fmt.Errorf(msg)
 	}
 
 	// check if current user sesion is logged in
-	if handle := findHandle(body); len(handle) != 0 {
-		return handle, nil
+	if elm := page.Elements(selCSSHandle).First(); elm != nil {
+		return clean(elm.Text()), nil
 	}
 
-	// hidden form data
-	csrf := findCsrf(body)
-	ftaa := genRandomString(18)
-	bfaa := genRandomString(32)
-
-	resp, err = SessCln.PostForm(link, url.Values{
-		"csrf_token":    {csrf},
-		"action":        {"enter"},
-		"ftaa":          {ftaa},
-		"bfaa":          {bfaa},
-		"handleOrEmail": {usr},
-		"password":      {passwd},
-		"_tta":          {"176"},
-		"remember":      {"on"},
-	})
-	if err != nil {
-		return "", err
+	// otherwise, login
+	page.Element("#handleOrEmail").Input(usr)
+	page.Element("#password").Input(passwd)
+	if page.Element("#remember").Property("checked").Bool() == false {
+		page.Element("#remember").Click()
 	}
+	page.Element(".submit").Click()
 
-	// the only message possible is Welcome, handle!
-	body, _ = parseResp(resp)
-	handle := findHandle(body)
-	if len(handle) == 0 {
-		// login failed
+	elm := page.Element(selCSSError, selCSSHandle)
+	if elm.Matches(selCSSError) {
 		return "", ErrInvalidCredentials
 	}
-	return handle, nil
+
+	return clean(elm.Text()), nil
+}
+
+func logout() error {
+	page, msg, err := loadPage(hostURL)
+	if err != nil {
+		return err
+	}
+	defer page.Close()
+
+	if msg != "" {
+		return fmt.Errorf(msg)
+	}
+
+	if page.HasMatches("a", "Logout") {
+		page.ElementMatches("a", "Logout").Click()
+		// page gives a notification on logout
+		page.Element(selCSSNotif)
+	}
+	return nil
 }
