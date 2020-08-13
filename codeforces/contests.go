@@ -434,9 +434,9 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 		Name:  getText(doc.Selection, "h2"),
 		Terms: getText(doc.Selection, ".terms"),
 		Register: func() error {
-			defer page.Close()
 			page.Element(".submit").Click()
-			page.Element(selCSSFooter)
+			page.Element(`.contestList`)
+			defer page.Close()
 			return nil
 		},
 	}
