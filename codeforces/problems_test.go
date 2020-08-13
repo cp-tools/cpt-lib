@@ -1,6 +1,8 @@
 package codeforces
 
 import (
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -404,7 +406,9 @@ func TestArgs_GetProblems(t *testing.T) {
 }
 
 func TestArgs_SubmitSolution(t *testing.T) {
-	source := genRandomString(30)
+	sFile, _ := ioutil.TempFile(os.TempDir(), "cpt-submission")
+	defer os.Remove(sFile.Name())
+	sFile.WriteString(genRandomString(30))
 
 	type args struct {
 		langID string
@@ -419,13 +423,13 @@ func TestArgs_SubmitSolution(t *testing.T) {
 		{
 			name:    "Test #1",
 			arg:     Args{"5", "a", "contest", ""},
-			args:    args{"54", source},
+			args:    args{"54", sFile.Name()},
 			wantErr: false,
 		},
 		{
 			name:    "Test #2",
 			arg:     Args{"5", "a", "contest", ""},
-			args:    args{"54", source},
+			args:    args{"54", sFile.Name()},
 			wantErr: true,
 		},
 	}

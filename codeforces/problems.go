@@ -1,9 +1,7 @@
 package codeforces
 
 import (
-	"bytes"
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -76,26 +74,28 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	}
 
 	link := arg.ProblemsPage()
-	resp, err := SessCln.Get(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return nil, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		// shouldn't return any error if success
+	defer page.Close()
+
+	if msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
+
+	doc, _ := goquery.NewDocumentFromReader(
+		strings.NewReader(page.Element("html").HTML()))
+
 	// to hold problem data
 	var probs []Problem
-
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	table := doc.Find(".problemindexholder")
-	table.Each(func(_ int, prob *goquery.Selection) {
-		probArg, _ := Parse(arg.Group + arg.Contest + prob.AttrOr("problemindex", ""))
+	table.Each(func(_ int, row *goquery.Selection) {
+		probArg, _ := Parse(arg.Group + arg.Contest + row.AttrOr("problemindex", ""))
 
 		// sample tests of problem
 		var sampleTests []SampleTest
-		inp, out := prob.Find(".input"), prob.Find(".output")
+		inp, out := row.Find(".input"), row.Find(".output")
 		for i := 0; i < inp.Length(); i++ {
 			inpStr, _ := inp.Find("pre").Eq(i).Html()
 			outStr, _ := out.Find("pre").Eq(i).Html()
@@ -105,7 +105,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 			})
 		}
 
-		header := prob.Find(".header")
+		header := row.Find(".header")
 		probs = append(probs, Problem{
 			Name:        getText(header, ".title"),
 			TimeLimit:   clean(header.Find(".time-limit").Contents().Last().Text()),
@@ -122,71 +122,48 @@ func (arg Args) GetProblems() ([]Problem, error) {
 // SubmitSolution submits source code to specifed problem.
 // langID is codeforces specified id of language to submit in.
 // View cp-tools/codeforces.wiki for list of valid ID's.
-// Source is code text to submit.
+// file is the submissions file to upload on the form.
 //
 // If submission completed successfully, returns nil error.
-func (arg Args) SubmitSolution(langID string, source string) error {
+func (arg Args) SubmitSolution(langID string, file string) error {
 	// problem not specifed, return invalid
 	if len(arg.Contest) == 0 || len(arg.Problem) == 0 {
 		return ErrInvalidSpecifier
 	}
 	// if langID invalid, return invalid
-	isLangIDValid := false
-	for _, v := range LanguageID {
+	langIDName := ""
+	for langName, v := range LanguageID {
 		if v == langID {
-			isLangIDValid = true
+			langIDName = langName
 			break
 		}
 	}
-	if isLangIDValid == false {
+	if langIDName == "" {
 		return fmt.Errorf("Invalid language id")
 	}
 
 	link := arg.ProblemsPage()
-	resp, err := SessCln.Get(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		// shouldn't return any error if success
+	defer page.Close()
+
+	if msg != "" {
 		return fmt.Errorf(msg)
 	}
 
-	// hidden form data
-	csrf := findCsrf(body)
-	ftaa := genRandomString(18)
-	bfaa := genRandomString(32)
+	// do the submitting here! (really simple)
+	page.Element(`select[name="programTypeId"]`).Select(langIDName)
+	page.Element(`input[name="sourceFile"]`).SetFiles(file)
+	page.Element(`input.submit`).Click()
 
-	resp, err = SessCln.PostForm(link, url.Values{
-		"csrf_token":            {csrf},
-		"ftaa":                  {ftaa},
-		"bfaa":                  {bfaa},
-		"action":                {"submitSolutionFormSubmitted"},
-		"submittedProblemIndex": {arg.Problem},
-		"programTypeId":         {langID},
-		"contestId":             {arg.Contest},
-		"source":                {source},
-		"tabSize":               {"4"},
-		"_tta":                  {"176"},
-		"sourceCodeConfirmed":   {"true"},
-	})
-	if err != nil {
-		return err
-	}
+	elm := page.Element(selCSSError, `tr[data-submission-id]`)
 
-	body, msg = parseResp(resp)
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
-	if msg1 := getText(doc.Selection, ".error.for__source"); len(msg1) != 0 {
+	if elm.Matches(selCSSError) {
 		// static error message (exact submission done before)
-		return fmt.Errorf(msg1)
+		msg := clean(elm.Text())
+		return fmt.Errorf(msg)
 	}
-	// successful submission should have message :
-	// "Solution to the problem X has been submitted successfully"
-	if strings.EqualFold(msg, "Solution to the problem "+arg.Problem+" has been submitted successfully") {
-		// submission successful!!!
-		return nil
-	}
-
-	return fmt.Errorf(msg)
+	return nil
 }
