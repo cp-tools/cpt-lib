@@ -3,7 +3,7 @@ name: Build and Test (atcoder)
 on:
   push:
     branches:
-      - '*'
+      - '**'
     tags-ignore:
       - 'v*'
     paths:
