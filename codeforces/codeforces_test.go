@@ -13,7 +13,7 @@ func TestMain(m *testing.M) {
 	// setup headless browser to use
 	_, mode := os.LookupEnv("LOCAL_MODE")
 
-	l := launcher.New().UserDataDir("user-data-dir").
+	l := launcher.New().UserDataDir("../user-data-dir").
 		Set("blink-settings", "imagesEnabled=false")
 	if mode {
 		l.Headless(false)
