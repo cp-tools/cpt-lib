@@ -21,7 +21,7 @@ var (
 )
 
 var (
-	hostURL = "http://www.usaco.org"
+	hostURL = "http://usaco.org"
 
 	// Browser is the headless browser to use.
 	Browser *rod.Browser
