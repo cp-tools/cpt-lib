@@ -423,13 +423,13 @@ func TestArgs_SubmitSolution(t *testing.T) {
 		{
 			name:    "Test #1",
 			arg:     Args{"5", "a", "contest", ""},
-			args:    args{"54", sFile.Name()},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
 			wantErr: false,
 		},
 		{
 			name:    "Test #2",
 			arg:     Args{"5", "a", "contest", ""},
-			args:    args{"54", sFile.Name()},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
 			wantErr: true,
 		},
 	}
