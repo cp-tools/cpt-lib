@@ -77,22 +77,22 @@ func login(usr, passwd string) (string, error) {
 	defer page.Close()
 
 	// check if current user session is logged in
-	if elm := page.Elements(selCSSHandle).First(); elm != nil {
-		return clean(elm.Text()), nil
+	if elm := page.MustElements(selCSSHandle).First(); elm != nil {
+		return clean(elm.MustText()), nil
 	}
 
 	// otherwise, login
-	page.Element(`input[name="uname"]`).Input(usr)
-	page.Element(`input[name="password"]`).Input(passwd)
-	page.Element(`input[value="Login"]`).Click()
+	page.MustElement(`input[name="uname"]`).Input(usr)
+	page.MustElement(`input[name="password"]`).Input(passwd)
+	page.MustElement(`input[value="Login"]`).MustClick()
 
-	elm := page.ElementMatches(selCSSHandle, `.*`,
+	elm := page.MustElementMatches(selCSSHandle, `.*`,
 		selCSSFormErr, `Incorrect password`)
-	if elm.Matches(selCSSFormErr) {
+	if elm.MustMatches(selCSSFormErr) {
 		return "", errInvalidCredentials
 	}
 
-	return clean(elm.Text()), nil
+	return clean(elm.MustText()), nil
 }
 
 func logout() error {
@@ -102,8 +102,8 @@ func logout() error {
 	}
 	defer page.Close()
 
-	if page.HasMatches(`button`, `Logout`) {
-		page.ElementMatches(`button`, `Logout`).Click()
+	if page.MustHasMatches(`button`, `Logout`) {
+		page.MustElementMatches(`button`, `Logout`).MustClick()
 		// page gives a notification on logout
 		page.Element(`input[value="Login"]`)
 	}

@@ -14,7 +14,7 @@ var (
 )
 
 func loadPage(link string) (*rod.Page, error) {
-	page, err := Browser.PageE(link)
+	page, err := Browser.Page(link)
 	if err != nil {
 		return nil, err
 	}
