@@ -47,7 +47,7 @@ func (arg Args) GetProblem() (Problem, error) {
 	defer page.Close()
 
 	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.Element("html").HTML()))
+		strings.NewReader(page.MustElement("html").MustHTML()))
 
 	// to hold problem data
 	var prob Problem
@@ -112,4 +112,33 @@ func (arg Args) GetProblem() (Problem, error) {
 	// this might come handy in the future
 	prob.Arg = arg
 	return prob, nil
+}
+
+func (arg Args) SubmitSolution(langName, file string) error {
+	// problem not specified
+	if arg.Cpid == "" {
+		return ErrInvalidSpecifier
+	}
+	// invalid language specified
+	if _, ok := LanguageID[langName]; !ok {
+		return fmt.Errorf("Invalid language name")
+	}
+
+	link := arg.ProblemPage()
+	page, err := loadPage(link)
+	if err != nil {
+		return err
+	}
+	defer page.Close()
+
+	if !page.MustHas(`select[name="language"]`) {
+		return fmt.Errorf("submission not possible")
+	}
+
+	page.MustElement(`select[name="language"]`).MustSelect(langName)
+	page.MustElement(`input[name="sourcefile"]`).MustSetFiles(file)
+	page.MustElement(`input#solution-submit`).MustClick()
+
+	// elm := page.Element()
+	return nil
 }
