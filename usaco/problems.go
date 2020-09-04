@@ -114,6 +114,11 @@ func (arg Args) GetProblem() (Problem, error) {
 	return prob, nil
 }
 
+// SubmitSolution submits source code to specified problem.
+// View languages.go for valid langName values.
+// file is the submission file to upload on the form.
+//
+// If submission completes successfully, returns nil.
 func (arg Args) SubmitSolution(langName, file string) error {
 	// problem not specified
 	if arg.Cpid == "" {

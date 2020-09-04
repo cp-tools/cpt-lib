@@ -9,6 +9,8 @@ import (
 )
 
 type (
+	// Args holds specifier details parsed by
+	// Parse() function.
 	Args struct {
 		Cpid string
 	}
