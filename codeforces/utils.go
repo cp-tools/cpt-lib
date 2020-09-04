@@ -21,15 +21,15 @@ var (
 )
 
 func loadPage(link string) (*rod.Page, string, error) {
-	page, err := Browser.PageE(link)
+	page, err := Browser.Page(link)
 	if err != nil {
 		return nil, "", err
 	}
 
 	// footer is loaded last ig? I'm not sure
-	elm := page.Element(selCSSNotif, selCSSFooter)
-	if elm.Matches(selCSSNotif) {
-		return page, clean(elm.Text()), nil
+	elm := page.MustElement(selCSSNotif, selCSSFooter)
+	if elm.MustMatches(selCSSNotif) {
+		return page, clean(elm.MustText()), nil
 	}
 	return page, "", nil
 }

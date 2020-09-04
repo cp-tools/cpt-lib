@@ -85,7 +85,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	}
 
 	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.Element("html").HTML()))
+		strings.NewReader(page.MustElement("html").MustHTML()))
 
 	// to hold problem data
 	var probs []Problem
@@ -146,15 +146,15 @@ func (arg Args) SubmitSolution(langName string, file string) error {
 	}
 
 	// do the submitting here! (really simple)
-	page.Element(`select[name="programTypeId"]`).Select(langName)
-	page.Element(`input[name="sourceFile"]`).SetFiles(file)
-	page.Element(`input.submit`).Click()
+	page.MustElement(`select[name="programTypeId"]`).MustSelect(langName)
+	page.MustElement(`input[name="sourceFile"]`).MustSetFiles(file)
+	page.MustElement(`input.submit`).MustClick()
 
-	elm := page.Element(selCSSError, `tr[data-submission-id]`)
+	elm := page.MustElement(selCSSError, `tr[data-submission-id]`)
 
-	if elm.Matches(selCSSError) {
+	if elm.MustMatches(selCSSError) {
 		// static error message (exact submission done before)
-		msg := clean(elm.Text())
+		msg := clean(elm.MustText())
 		return fmt.Errorf(msg)
 	}
 	return nil

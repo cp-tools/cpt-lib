@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 	if mode {
 		l.Headless(false)
 	}
-	Browser = rod.New().ControlURL(l.Launch()).Connect()
+	Browser = rod.New().ControlURL(l.MustLaunch()).MustConnect()
 
 	if !mode {
 		// setup login access to use
