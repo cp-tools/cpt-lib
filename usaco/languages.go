@@ -1,6 +1,7 @@
 package usaco
 
 var (
+	// LanguageID represents all available languages with ids.
 	LanguageID = map[string]string{
 		"C":            "1",
 		"C++":          "2",
