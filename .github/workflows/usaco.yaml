@@ -35,5 +35,5 @@ jobs:
     - name: Test
       run: go test -v ./usaco
       env:
-        CODEFORCES_USERNAME: cptools
-        CODEFORCES_PASSWORD: ${{ secrets.USACO_PASSWORD }}
+        USACO_USERNAME: cptools
+        USACO_PASSWORD: ${{ secrets.USACO_PASSWORD }}
