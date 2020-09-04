@@ -16,15 +16,14 @@ func TestMain(m *testing.M) {
 		Set("blink-settings", "imagesEnabled=false")
 	if mode {
 		l.Headless(false)
+		l.Bin("google-chrome-stable")
 	}
 	Browser = rod.New().ControlURL(l.MustLaunch()).MustConnect()
 
-	if !mode {
-		// setup login access to use
-		usr := os.Getenv("USACO_USERNAME")
-		passwd := os.Getenv("USACO_PASSWORD")
-		login(usr, passwd)
-	}
+	// setup login access to use
+	usr := os.Getenv("USACO_USERNAME")
+	passwd := os.Getenv("USACO_PASSWORD")
+	login(usr, passwd)
 
 	exitCode := m.Run()
 

@@ -1,6 +1,8 @@
 package usaco
 
 import (
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -93,6 +95,43 @@ func TestArgs_GetProblem(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Args.GetProblem() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestArgs_SubmitSolution(t *testing.T) {
+	sFile, _ := ioutil.TempFile(os.TempDir(), "cpt-submission")
+	defer os.Remove(sFile.Name())
+	sFile.WriteString(`int main(){return 0;}`)
+
+	type fields struct {
+		Cpid string
+	}
+	type args struct {
+		langName string
+		file     string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name:    "Test #1",
+			fields:  fields{"941"},
+			args:    args{"C++", sFile.Name()},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			arg := Args{
+				Cpid: tt.fields.Cpid,
+			}
+			if err := arg.SubmitSolution(tt.args.langName, tt.args.file); (err != nil) != tt.wantErr {
+				t.Errorf("Args.SubmitSolution() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

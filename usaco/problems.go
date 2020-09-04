@@ -135,10 +135,18 @@ func (arg Args) SubmitSolution(langName, file string) error {
 		return fmt.Errorf("submission not possible")
 	}
 
+	// find previous submission status id
+	prevSid := *page.MustElement(`#last-status`).MustAttribute(`data-sid`)
+
 	page.MustElement(`select[name="language"]`).MustSelect(langName)
 	page.MustElement(`input[name="sourcefile"]`).MustSetFiles(file)
 	page.MustElement(`input#solution-submit`).MustClick()
+	page.MustWaitLoad()
 
-	// elm := page.Element()
+	currSid := *page.MustElement(`#last-status`).MustAttribute(`data-sid`)
+	if prevSid == currSid {
+		return fmt.Errorf("failed to submit solution")
+
+	}
 	return nil
 }
