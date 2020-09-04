@@ -15,6 +15,7 @@ func TestMain(m *testing.M) {
 	l := launcher.New().UserDataDir("../user-data-dir").
 		Set("blink-settings", "imagesEnabled=false")
 	if mode {
+		// trigger build
 		l.Headless(false)
 		l.Bin("google-chrome-stable")
 	}
