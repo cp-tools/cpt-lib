@@ -121,7 +121,7 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 	}
 
 	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.Element("html").HTML()))
+		strings.NewReader(page.MustElement("html").MustHTML()))
 
 	val := doc.Find("span.countdown>span").AttrOr("title", "")
 	if len(val) == 0 {
@@ -166,7 +166,7 @@ func (arg Args) GetContests(count int) ([]Contest, error) {
 	// run till 'count' rows are parsed
 	for true {
 		doc, _ := goquery.NewDocumentFromReader(
-			strings.NewReader(page.Element("html").HTML()))
+			strings.NewReader(page.MustElement("html").MustHTML()))
 
 		table := new(goquery.Selection)
 		if doc.Find(".pagination span.active").AttrOr("pageindex", "1") == "1" {
@@ -295,13 +295,13 @@ func (arg Args) GetContests(count int) ([]Contest, error) {
 		}
 
 		// navigate to next page
-		if !page.HasMatches(".pagination li", "→") {
+		if !page.MustHasMatches(".pagination li", "→") {
 			// no more pages more left. Break
 			break
 		}
 
 		// click navigation button and wait till loads
-		page.ElementMatches(".pagination li", "→").Click()
+		page.MustElementMatches(".pagination li", "→").MustClick()
 		page.Element(selCSSFooter)
 	}
 
@@ -327,7 +327,7 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 	}
 
 	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.Element("html").HTML()))
+		strings.NewReader(page.MustElement("html").MustHTML()))
 
 	var dashboard Dashboard
 	dashboard.Material = make(map[string]string)
@@ -428,13 +428,13 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 	}
 
 	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.Element("html").HTML()))
+		strings.NewReader(page.MustElement("html").MustHTML()))
 
 	registerInfo := &RegisterInfo{
 		Name:  getText(doc.Selection, "h2"),
 		Terms: getText(doc.Selection, ".terms"),
 		Register: func() error {
-			page.Element(".submit").Click()
+			page.MustElement(".submit").MustClick()
 			page.Element(`.contestList`)
 			defer page.Close()
 			return nil

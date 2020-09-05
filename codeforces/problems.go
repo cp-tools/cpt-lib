@@ -85,7 +85,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	}
 
 	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.Element("html").HTML()))
+		strings.NewReader(page.MustElement("html").MustHTML()))
 
 	// to hold problem data
 	var probs []Problem
@@ -120,25 +120,17 @@ func (arg Args) GetProblems() ([]Problem, error) {
 }
 
 // SubmitSolution submits source code to specifed problem.
-// langID is codeforces specified id of language to submit in.
-// View cp-tools/codeforces.wiki for list of valid ID's.
+// langName is codeforces specified name of language to submit in.
 // file is the submissions file to upload on the form.
 //
 // If submission completed successfully, returns nil error.
-func (arg Args) SubmitSolution(langID string, file string) error {
+func (arg Args) SubmitSolution(langName string, file string) error {
 	// problem not specifed, return invalid
 	if len(arg.Contest) == 0 || len(arg.Problem) == 0 {
 		return ErrInvalidSpecifier
 	}
-	// if langID invalid, return invalid
-	langIDName := ""
-	for langName, v := range LanguageID {
-		if v == langID {
-			langIDName = langName
-			break
-		}
-	}
-	if langIDName == "" {
+
+	if _, ok := LanguageID[langName]; !ok {
 		return fmt.Errorf("Invalid language id")
 	}
 
@@ -154,15 +146,15 @@ func (arg Args) SubmitSolution(langID string, file string) error {
 	}
 
 	// do the submitting here! (really simple)
-	page.Element(`select[name="programTypeId"]`).Select(langIDName)
-	page.Element(`input[name="sourceFile"]`).SetFiles(file)
-	page.Element(`input.submit`).Click()
+	page.MustElement(`select[name="programTypeId"]`).MustSelect(langName)
+	page.MustElement(`input[name="sourceFile"]`).MustSetFiles(file)
+	page.MustElement(`input.submit`).MustClick()
 
-	elm := page.Element(selCSSError, `tr[data-submission-id]`)
+	elm := page.MustElement(selCSSError, `tr[data-submission-id]`)
 
-	if elm.Matches(selCSSError) {
+	if elm.MustMatches(selCSSError) {
 		// static error message (exact submission done before)
-		msg := clean(elm.Text())
+		msg := clean(elm.MustText())
 		return fmt.Errorf(msg)
 	}
 	return nil

@@ -99,7 +99,7 @@ func (arg Args) GetSubmissions(handle string, count int) ([]Submission, error) {
 	// run till 'count' rows are parsed
 	for true {
 		doc, _ := goquery.NewDocumentFromReader(
-			strings.NewReader(page.Element("html").HTML()))
+			strings.NewReader(page.MustElement("html").MustHTML()))
 
 		table := doc.Find("tr[data-submission-id]")
 		table.EachWithBreak(func(_ int, row *goquery.Selection) bool {
@@ -165,13 +165,13 @@ func (arg Args) GetSubmissions(handle string, count int) ([]Submission, error) {
 		}
 
 		// navigate to next page
-		if !page.HasMatches(".pagination li", "→") {
+		if !page.MustHasMatches(".pagination li", "→") {
 			// no more pages more left. Break
 			break
 		}
 
 		// click navigation button and wait till loads
-		page.ElementMatches(".pagination li", "→").Click()
+		page.MustElementMatches(".pagination li", "→").MustClick()
 		page.Element(selCSSFooter)
 	}
 
@@ -201,7 +201,7 @@ func (sub Submission) GetSourceCode() (string, error) {
 
 	// extract source code from html body
 	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.Element("html").HTML()))
+		strings.NewReader(page.MustElement("html").MustHTML()))
 
 	source := ""
 	codeBlock := doc.Find("pre#program-source-text li")
