@@ -10,8 +10,7 @@ import (
 
 type (
 	// Args holds specifier details parsed by
-	// Parse() function. Provides methods to
-	// access value of specifiers (read-only).
+	// Parse() function.
 	Args struct {
 		Contest string
 		Problem string

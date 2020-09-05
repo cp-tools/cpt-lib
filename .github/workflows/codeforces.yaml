@@ -24,7 +24,7 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
-    - name: Cache
+    - name: Cache Dependencies
       uses: actions/cache@v1.2.0
       with:
         path: ~/go/pkg/mod
@@ -32,8 +32,15 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-go-
 
+    - name: Cache Tests
+      uses: actions/cache@v1.2.0
+      with:
+        path: ~/.cache/go-build
+        key: ${{ runner.os }}-go-testcache
+
     - name: Test
       run: go test -v ./codeforces
       env:
         CODEFORCES_USERNAME: cp-tools
         CODEFORCES_PASSWORD: ${{ secrets.CODEFORCES_PASSWORD }}
+

@@ -34,6 +34,12 @@ func loadPage(link string) (*rod.Page, string, error) {
 	return page, "", nil
 }
 
+func processHTML(page *rod.Page) *goquery.Document {
+	doc, _ := goquery.NewDocumentFromReader(
+		strings.NewReader(page.MustElement("html").MustHTML()))
+	return doc
+}
+
 func clean(str string) string {
 	// remove trailiing/leading spaces
 	str = strings.ReplaceAll(str, "<br/>", "\n")

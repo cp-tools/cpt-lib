@@ -2,7 +2,6 @@ package codeforces
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -75,11 +74,12 @@ func (sub Submission) SourceCodePage() (link string) {
 // If handle is not set, fetches submissions of currently active user session.
 // Due to a bug on codeforces, submissions in groups are not supported.
 //
-// Set 'count' to the maximum number of rows you want to be returned.
-// Set to -1 if you want to fetch all rows of data.
-func (arg Args) GetSubmissions(handle string, count int) ([]Submission, error) {
-	if count < 0 {
-		count = 1e9
+// Set 'pageCount' to the maximum number of pages of rows you want to be scraped.
+// If 'pageCount' > 1, channel will not wait until all verdicts are declared, and will
+// close once verdicts from all specified pages are extracted.
+func (arg Args) GetSubmissions(handle string, pageCount int) (<-chan []Submission, error) {
+	if pageCount < 0 {
+		pageCount = 1e9
 	}
 
 	link := arg.SubmissionsPage(handle)
@@ -87,95 +87,111 @@ func (arg Args) GetSubmissions(handle string, count int) ([]Submission, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer page.Close()
 
 	if msg != "" {
+		defer page.Close()
 		return nil, fmt.Errorf(msg)
 	}
 
 	// @todo Add support for excluding unofficial submissions
 
-	submissions := make([]Submission, 0)
-	// run till 'count' rows are parsed
-	for true {
-		doc, _ := goquery.NewDocumentFromReader(
-			strings.NewReader(page.MustElement("html").MustHTML()))
+	// create buffered channel for submissions
+	chanSubmissions := make(chan []Submission, 500)
+	go func() {
+		defer page.Close()
+		defer close(chanSubmissions)
 
-		table := doc.Find("tr[data-submission-id]")
-		table.EachWithBreak(func(_ int, row *goquery.Selection) bool {
-			if count == 0 {
-				// got required amount of rows. Break
-				return false
-			}
+		// parse submissions from current page
+		parseFunc := func() ([]Submission, bool) {
+			submissions := make([]Submission, 0)
+			isDone := true
 
-			var submissionRow Submission
-			// extract contest args from html attr label
-			subArg, _ := Parse(hostURL + getAttr(row, "td:nth-of-type(4) a", "href"))
-			if arg.Problem != "" && arg.Problem != subArg.Problem {
-				return true
-			}
-			submissionRow.Arg = subArg
-
-			row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
-				switch cellIdx {
-				case 0:
-					id := clean(cell.Text())
-					submissionRow.ID = id
-
-				case 1:
-					when := parseTime(clean(cell.Text()))
-					submissionRow.When = when
-
-				case 2:
-					who := clean(cell.Text())
-					submissionRow.Who = who
-
-				case 3:
-					problem := clean(cell.Text())
-					submissionRow.Problem = problem
-
-				case 4:
-					language := clean(cell.Text())
-					submissionRow.Language = language
-
-				case 5:
-					isJudging := cell.AttrOr("waiting", "") == "true"
-					submissionRow.IsJudging = isJudging
-
-					verdict := clean(cell.Text())
-					submissionRow.Verdict = verdict
-
-				case 6:
-					time := clean(cell.Text())
-					submissionRow.Time = time
-
-				case 7:
-					memory := clean(cell.Text())
-					submissionRow.Memory = memory
+			doc := processHTML(page)
+			// WARNING! ugly extraction code ahead. Don't peep XD
+			table := doc.Find("tr[data-submission-id]")
+			table.Each(func(_ int, row *goquery.Selection) {
+				var submissionRow Submission
+				// extract contest args from html attr label
+				subArg, _ := Parse(hostURL + getAttr(row, "td:nth-of-type(4) a", "href"))
+				if arg.Problem != "" && arg.Problem != subArg.Problem {
+					return
 				}
+				submissionRow.Arg = subArg
+
+				row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+					switch cellIdx {
+					case 0:
+						id := clean(cell.Text())
+						submissionRow.ID = id
+
+					case 1:
+						when := parseTime(clean(cell.Text()))
+						submissionRow.When = when
+
+					case 2:
+						who := clean(cell.Text())
+						submissionRow.Who = who
+
+					case 3:
+						problem := clean(cell.Text())
+						submissionRow.Problem = problem
+
+					case 4:
+						language := clean(cell.Text())
+						submissionRow.Language = language
+
+					case 5:
+						isJudging := cell.AttrOr("waiting", "") == "true"
+						submissionRow.IsJudging = isJudging
+						if isJudging == true {
+							isDone = false
+						}
+
+						verdict := clean(cell.Text())
+						submissionRow.Verdict = verdict
+
+					case 6:
+						time := clean(cell.Text())
+						submissionRow.Time = time
+
+					case 7:
+						memory := clean(cell.Text())
+						submissionRow.Memory = memory
+					}
+				})
+				submissions = append(submissions, submissionRow)
 			})
 
-			submissions = append(submissions, submissionRow)
-			count--
-			return true
-		})
-
-		if count == 0 {
-			break
+			return submissions, isDone
 		}
 
-		// navigate to next page
-		if !page.MustHasMatches(".pagination li", "→") {
-			// no more pages more left. Break
-			break
+		if pageCount == 1 {
+			// loop till 'isDone' is true
+			for true {
+				submissions, isDone := parseFunc()
+				chanSubmissions <- submissions
+				if isDone == true {
+					break
+				}
+				time.Sleep(time.Millisecond * 500)
+			}
+		} else {
+			// iterate till no more valid required pages left
+			for ; pageCount > 0; pageCount-- {
+				submissions, _ := parseFunc()
+				chanSubmissions <- submissions
+
+				if !page.MustHasMatches(".pagination li", "→") || pageCount == 0 {
+					// no more pages to parse
+					break
+				}
+				// click navigation button and wait till loads
+				page.MustElementMatches(".pagination li", "→").MustClick()
+				page.Element(selCSSFooter)
+			}
 		}
-
-		// click navigation button and wait till loads
-		page.MustElementMatches(".pagination li", "→").MustClick()
-		page.Element(selCSSFooter)
-	}
-
-	return submissions, nil
+	}()
+	return chanSubmissions, nil
 }
 
 // GetSourceCode parses and returns source code of submission
@@ -200,8 +216,7 @@ func (sub Submission) GetSourceCode() (string, error) {
 	}
 
 	// extract source code from html body
-	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.MustElement("html").MustHTML()))
+	doc := processHTML(page)
 
 	source := ""
 	codeBlock := doc.Find("pre#program-source-text li")

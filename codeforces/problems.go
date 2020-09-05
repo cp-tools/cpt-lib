@@ -2,7 +2,8 @@ package codeforces
 
 import (
 	"fmt"
-	"strings"
+	"os"
+	"regexp"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -84,8 +85,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 		return nil, fmt.Errorf(msg)
 	}
 
-	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.MustElement("html").MustHTML()))
+	doc := processHTML(page)
 
 	// to hold problem data
 	var probs []Problem
@@ -131,7 +131,12 @@ func (arg Args) SubmitSolution(langName string, file string) error {
 	}
 
 	if _, ok := LanguageID[langName]; !ok {
-		return fmt.Errorf("Invalid language id")
+		return fmt.Errorf("Invalid language")
+	}
+
+	// check if given file exists
+	if fl, err := os.Stat(file); os.IsNotExist(err) || fl.IsDir() {
+		return fmt.Errorf("Invalid file path")
 	}
 
 	link := arg.ProblemsPage()
@@ -143,6 +148,16 @@ func (arg Args) SubmitSolution(langName string, file string) error {
 
 	if msg != "" {
 		return fmt.Errorf(msg)
+	}
+
+	// check if user is logged in
+	if !page.MustHas(selCSSHandle) {
+		return fmt.Errorf("No logged in session present")
+	}
+
+	// check if specified language can be selected
+	if !page.MustHasMatches(`select>option[value]`, regexp.QuoteMeta(langName)) {
+		return fmt.Errorf("Language not supported")
 	}
 
 	// do the submitting here! (really simple)

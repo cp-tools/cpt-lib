@@ -104,6 +104,9 @@ func (arg Args) RegisterPage() (link string) {
 // in specified contest to end. If countdown has already ended,
 // returns 0. Extracts data from .../contest/<contest>/countdown.
 func (arg Args) GetCountdown() (time.Duration, error) {
+	// chan has not been implemented here since,
+	// countdown is updated on reload,
+	// and is not websocket based.
 	if len(arg.Contest) == 0 {
 		return 0, ErrInvalidSpecifier
 	}
@@ -120,9 +123,7 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 		return 0, fmt.Errorf(msg)
 	}
 
-	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.MustElement("html").MustHTML()))
-
+	doc := processHTML(page)
 	val := doc.Find("span.countdown>span").AttrOr("title", "")
 	if len(val) == 0 {
 		val = doc.Find("span.countdown").Text()
@@ -165,8 +166,7 @@ func (arg Args) GetContests(count int) ([]Contest, error) {
 	contests := make([]Contest, 0)
 	// run till 'count' rows are parsed
 	for true {
-		doc, _ := goquery.NewDocumentFromReader(
-			strings.NewReader(page.MustElement("html").MustHTML()))
+		doc := processHTML(page)
 
 		table := new(goquery.Selection)
 		if doc.Find(".pagination span.active").AttrOr("pageindex", "1") == "1" {
@@ -326,8 +326,7 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 		return Dashboard{}, fmt.Errorf(msg)
 	}
 
-	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.MustElement("html").MustHTML()))
+	doc := processHTML(page)
 
 	var dashboard Dashboard
 	dashboard.Material = make(map[string]string)
@@ -427,8 +426,7 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 		return nil, fmt.Errorf(msg)
 	}
 
-	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.MustElement("html").MustHTML()))
+	doc := processHTML(page)
 
 	registerInfo := &RegisterInfo{
 		Name:  getText(doc.Selection, "h2"),
