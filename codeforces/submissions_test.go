@@ -82,7 +82,7 @@ func TestArgs_GetSubmissions(t *testing.T) {
 		{
 			name: "Test #1",
 			arg:  Args{"4", "", "contest", ""},
-			args: args{"cp-tools", 3},
+			args: args{"cp-tools", 1},
 			want: []Submission{
 				{
 					ID:        "81327550",
@@ -120,6 +120,18 @@ func TestArgs_GetSubmissions(t *testing.T) {
 					IsJudging: false,
 					Arg:       Args{"4", "b", "contest", ""},
 				},
+				{
+					ID:        "81011111",
+					When:      time.Date(2020, time.May, 23, 11, 45, 0, 0, time.UTC),
+					Who:       "cp-tools",
+					Problem:   "A - Watermelon",
+					Language:  "GNU C++17",
+					Verdict:   "Accepted",
+					Time:      "62 ms",
+					Memory:    "0 KB",
+					IsJudging: false,
+					Arg:       Args{"4", "a", "contest", ""},
+				},
 			},
 			wantErr: false,
 		},
@@ -146,17 +158,48 @@ func TestArgs_GetSubmissions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			got, err := tt.arg.GetSubmissions(tt.args.handle, tt.args.count)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.GetSubmissions() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Args.GetSubmissions() = %v, want %v", got, tt.want)
+
+			// read till channel closes
+			val := make([]Submission, 0)
+			for v := range got {
+				val = append(val, v...)
+			}
+
+			if !reflect.DeepEqual(val, tt.want) {
+				t.Errorf("Args.GetSubmissions() = %v, want %v", val, tt.want)
 			}
 		})
 	}
 }
+
+/*
+func TestArgs_ChanGetSubmissions(t *testing.T) {
+	// get (some) submission to submit
+	arg, _ := Parse("1132c")
+	chanSubmissions, _ := arg.GetSubmissions("hohomu", 1)
+	submissions := <-chanSubmissions
+
+	sourceCode, _ := submissions[0].GetSourceCode()
+	sourceCode += fmt.Sprintf("\n//%v\n", genRandomString(10))
+	file, _ := ioutil.TempFile(os.TempDir(), "tmp-source")
+	defer os.Remove(file.Name())
+	file.WriteString(sourceCode)
+
+	// submit solution, and monitor submission status
+	arg.SubmitSolution("GNU G++14 6.4.0", file.Name())
+	chanSubmissions, _ = arg.GetSubmissions("cp-tools", 1)
+	for submissions := range chanSubmissions {
+		t.Log(submissions[0].Verdict)
+	}
+	// works as expected!
+}
+*/
 
 func TestSubmission_GetSourceCode(t *testing.T) {
 	tests := []struct {
