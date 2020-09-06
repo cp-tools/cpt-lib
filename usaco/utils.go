@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/go-rod/rod"
 )
 
@@ -21,6 +22,12 @@ func loadPage(link string) (*rod.Page, error) {
 
 	page.Element(selCSSNavbar)
 	return page, nil
+}
+
+func processHTML(page *rod.Page) *goquery.Document {
+	doc, _ := goquery.NewDocumentFromReader(
+		strings.NewReader(page.MustElement("html").MustHTML()))
+	return doc
 }
 
 func clean(str string) string {
