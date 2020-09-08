@@ -10,20 +10,16 @@ func TestArgs_GetSubmission(t *testing.T) {
 		Cpid string
 	}
 	tests := []struct {
-		name     string
-		fields   fields
-		want     Verdict
-		chanData []TestCaseVerdict
-		wantErr  bool
+		name    string
+		fields  fields
+		want    []TestCaseVerdict
+		want1   string
+		wantErr bool
 	}{
 		{
 			name:   "Test #1",
 			fields: fields{"545"},
-			want: Verdict{
-				Status:      "OK",
-				LastVerdict: make(chan TestCaseVerdict, 100),
-			},
-			chanData: []TestCaseVerdict{
+			want: []TestCaseVerdict{
 				{
 					Index:   1,
 					Verdict: "Correct answer",
@@ -115,6 +111,7 @@ func TestArgs_GetSubmission(t *testing.T) {
 					Time:    "23ms",
 				},
 			},
+			want1:   "OK",
 			wantErr: false,
 		},
 	}
@@ -123,19 +120,23 @@ func TestArgs_GetSubmission(t *testing.T) {
 			arg := Args{
 				Cpid: tt.fields.Cpid,
 			}
-			got, err := arg.GetSubmission()
+			got, got1, err := arg.GetSubmission()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.GetSubmission() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			for _, val := range tt.chanData {
-				tt.want.LastVerdict <- val
+			if got1 != tt.want1 {
+				t.Errorf("Args.GetSubmission() got1 = %v, want %v", got1, tt.want1)
 			}
 
-			v1, v2 := <-got.LastVerdict, <-tt.want.LastVerdict
-			if !reflect.DeepEqual(v1, v2) {
-				t.Errorf("Args.GetSubmission() = %v, want %v", v1, v2)
+			val := make([]TestCaseVerdict, 0)
+			for v := range got {
+				val = append(val, v)
+			}
+
+			if !reflect.DeepEqual(val, tt.want) {
+				t.Errorf("Args.GetSubmission() got = %v, want %v", val, tt.want)
 			}
 		})
 	}

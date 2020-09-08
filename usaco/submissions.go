@@ -13,14 +13,6 @@ type (
 		Time    string
 		Memory  string
 	}
-
-	// Verdict holds verdict of last submission.
-	Verdict struct {
-		// compilation error, file error is parsed here.
-		// Is empty string if no errors occurred.
-		Status      string
-		LastVerdict chan TestCaseVerdict
-	}
 )
 
 // Verdict Status types
@@ -35,46 +27,38 @@ const (
 // of latest submission in problem.
 //
 // A buffered channel is opened until all tests have been judged.
-// Read verdicts of latest testcase from 'Verdict.LastVerdict'.
-func (arg Args) GetSubmission() (Verdict, error) {
+func (arg Args) GetSubmission() (<-chan TestCaseVerdict, string, error) {
 	if arg.Cpid == "" {
-		return Verdict{}, ErrInvalidSpecifier
+		return nil, "", ErrInvalidSpecifier
 	}
 
 	link := arg.ProblemPage()
 	page, err := loadPage(link)
 	if err != nil {
-		return Verdict{}, err
+		return nil, "", err
 	}
 	page.MustElement(`#last-status[data-sid]`)
 	doc := processHTML(page)
-	// page close after goroutine completes
-	var verdict Verdict
 
 	lastStatusElm := doc.Find("#last-status")
 	if lastStatusElm.AttrOr("data-sid", "-1") == "-1" {
-		verdict.Status = VerdictStatusNA
-		return verdict, nil
+		return nil, VerdictStatusNA, nil
 	}
 
 	if lastStatusElm.AttrOr("class", "") == "status-no" {
 		// check if compilation error (or failed sample)
 		str := lastStatusElm.Text()
 		if match, _ := regexp.MatchString(`Compilation Error`, str); match {
-			verdict.Status = VerdictStatusCE
-
-		} else {
-			verdict.Status = VerdictStatusFS
+			return nil, VerdictStatusCE, nil
 		}
-		return verdict, nil
+		return nil, VerdictStatusFS, nil
 	}
 
-	verdict.Status = VerdictStatusOK
 	// create buffered channel for latest testcase verdict
-	verdict.LastVerdict = make(chan TestCaseVerdict, 100)
+	chanTestCaseVerdict := make(chan TestCaseVerdict, 100)
 	go func() {
 		defer page.Close()
-		defer close(verdict.LastVerdict)
+		defer close(chanTestCaseVerdict)
 
 		// parse 'index' test case verdict
 		index := 1
@@ -89,13 +73,13 @@ func (arg Args) GetSubmission() (Verdict, error) {
 			for index <= testcases.Length() {
 				// found 'index' judgement
 				testcase := testcases.Eq(index - 1)
-				tcVerdict := TestCaseVerdict{
+				testCaseVerdict := TestCaseVerdict{
 					Index:   index,
 					Verdict: testcase.AttrOr("title", ""),
 					Memory:  testcase.Find(".info>span").Eq(0).Text(),
 					Time:    testcase.Find(".info>span").Eq(1).Text(),
 				}
-				verdict.LastVerdict <- tcVerdict
+				chanTestCaseVerdict <- testCaseVerdict
 				index++
 			}
 
@@ -105,5 +89,5 @@ func (arg Args) GetSubmission() (Verdict, error) {
 			}
 		}
 	}()
-	return verdict, nil
+	return chanTestCaseVerdict, VerdictStatusOK, nil
 }
