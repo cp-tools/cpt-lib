@@ -83,7 +83,7 @@ func (arg Args) GetSubmissions(handle string, pageCount int) (<-chan []Submissio
 	}
 
 	link := arg.SubmissionsPage(handle)
-	page, msg, err := loadPage(link)
+	page, msg, err := loadPage(link, `tr[data-submission-id]`)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func (arg Args) GetSubmissions(handle string, pageCount int) (<-chan []Submissio
 				}
 				// click navigation button and wait till loads
 				page.MustElementMatches(".pagination li", "→").MustClick()
-				page.Element(selCSSFooter)
+				page.Element(`tr[data-submission-id]`)
 			}
 		}
 	}()
@@ -205,7 +205,7 @@ func (sub Submission) GetSourceCode() (string, error) {
 	}
 
 	link := sub.SourceCodePage()
-	page, msg, err := loadPage(link)
+	page, msg, err := loadPage(link, `#program-source-text`)
 	if err != nil {
 		return "", err
 	}
@@ -216,12 +216,7 @@ func (sub Submission) GetSourceCode() (string, error) {
 	}
 
 	// extract source code from html body
-	doc := processHTML(page)
-
-	source := ""
-	codeBlock := doc.Find("pre#program-source-text li")
-	codeBlock.Each(func(_ int, ln *goquery.Selection) {
-		source += ln.Text() + "\n"
-	})
+	source := page.MustEval(`document.querySelector(
+		"#program-source-text").innerText`).String()
 	return source, nil
 }

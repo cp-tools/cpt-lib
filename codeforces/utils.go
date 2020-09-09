@@ -13,21 +13,20 @@ import (
 )
 
 var (
-	selCSSNotif   = `.jGrowl-notification .message`
-	selCSSHandle  = `#header a[href^="/profile/"]`
-	selCSSCurrTab = `.second-level-menu-list .current`
-	selCSSFooter  = `#footer`
-	selCSSError   = `.error`
+	selCSSNotif  = `.jGrowl-notification .message`
+	selCSSHandle = `#header a[href^="/profile/"]`
+	selCSSFooter = `#footer`
+	selCSSError  = `.error`
 )
 
-func loadPage(link string) (*rod.Page, string, error) {
+func loadPage(link string, selMatch string) (*rod.Page, string, error) {
 	page, err := Browser.Page(link)
 	if err != nil {
 		return nil, "", err
 	}
 
 	// footer is loaded last ig? I'm not sure
-	elm := page.MustElement(selCSSNotif, selCSSFooter)
+	elm := page.MustElement(selCSSNotif, selMatch)
 	if elm.MustMatches(selCSSNotif) {
 		return page, clean(elm.MustText()), nil
 	}
