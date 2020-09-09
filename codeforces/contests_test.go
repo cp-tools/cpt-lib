@@ -178,7 +178,7 @@ func TestArgs_GetCountdown(t *testing.T) {
 
 func TestArgs_GetContests(t *testing.T) {
 	type args struct {
-		count int
+		pageCount int
 	}
 	tests := []struct {
 		name    string
@@ -208,7 +208,7 @@ func TestArgs_GetContests(t *testing.T) {
 		{
 			name: "Test #2",
 			arg:  Args{"100499", "", "gym", ""},
-			args: args{2},
+			args: args{-1},
 			want: []Contest{
 				{
 					Name:        "2014 ACM-ICPC Vietnam National First Round",
@@ -226,7 +226,7 @@ func TestArgs_GetContests(t *testing.T) {
 		{
 			name: "Test #3",
 			arg:  Args{"", "", "group", "7rY4CfQSjd"},
-			args: args{-1},
+			args: args{2},
 			want: []Contest{
 				{
 					Name:        "gym problems -2",
@@ -305,44 +305,65 @@ func TestArgs_GetContests(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.arg.GetContests(tt.args.count)
+			got, err := tt.arg.GetContests(tt.args.pageCount)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.GetContests() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Args.GetContests() = %v, want %v", got, tt.want)
+			val := make([]Contest, 0)
+			for v := range got {
+				val = append(val, v...)
+			}
+
+			if !reflect.DeepEqual(val, tt.want) {
+				t.Errorf("Args.GetContests() = %v, want %v", val, tt.want)
 			}
 		})
 	}
 }
 
 func TestArgs_RegisterForContest(t *testing.T) {
-	tests := []struct {
-		name    string
-		arg     Args
-		want    *RegisterInfo
-		wantErr bool
-	}{
-		{
-			name:    "Test #1",
-			arg:     Args{"4", "", "contest", ""},
-			want:    nil,
-			wantErr: true,
-		},
+	// check if there exists any contests
+	// with open registration available
+	arg := Args{Class: ClassContest}
+	chanContests, err := arg.GetContests(1)
+	if err != nil {
+		t.Errorf("arg.GetContests() error = %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.arg.RegisterForContest()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Args.RegisterForContest() error = %v, wantErr %v", err, tt.wantErr)
-				return
+
+	for contests := range chanContests {
+		for _, cont := range contests {
+			if cont.RegStatus != RegistrationOpen {
+				continue
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Args.RegisterForContest() = %v, want %v", got, tt.want)
+
+			// found contest. Try registering in it.
+			regInfo, err := cont.Arg.RegisterForContest()
+			if err != nil {
+				t.Errorf("cont.Arg.RegisterForContest() error = %v", err)
 			}
-		})
+
+			err = regInfo.Register()
+			if err != nil {
+				t.Errorf("regInfo.Register() error = %v", err)
+			}
+
+			// check registered status
+			chanCurrContests, err := cont.Arg.GetContests(1)
+			if err != nil {
+				t.Errorf("cont.Arg.GetContests() error = %v", err)
+			}
+
+			for currContests := range chanCurrContests {
+				// check if registered in contest
+				if currContests[0].RegStatus != RegistrationDone {
+					t.Errorf("Registration failed - %v", currContests[0])
+				}
+			}
+
+			break
+		}
 	}
 }
 

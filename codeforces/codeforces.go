@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
 )
 
 type (
@@ -29,7 +30,7 @@ const (
 // Set errors returned by library.
 var (
 	ErrInvalidSpecifier   = fmt.Errorf("invalid specifier data")
-	ErrInvalidCredentials = fmt.Errorf("invalid login credentials")
+	errInvalidCredentials = fmt.Errorf("invalid login credentials")
 )
 
 var (
@@ -38,6 +39,16 @@ var (
 	// Browser is the headless browser to use.
 	Browser *rod.Browser
 )
+
+// Start initiates the headless browser to use.
+func Start(headless bool, userDataDir, bin string, flags ...[]string) {
+	l := launcher.New().UserDataDir(userDataDir).
+		Headless(headless).Bin(bin)
+	for _, flag := range flags {
+		l.Set(flag[0], flag[1:]...)
+	}
+	Browser = rod.New().ControlURL(l.MustLaunch()).MustConnect()
+}
 
 func (arg Args) String() string {
 	// 201468 c1 (group/Qvv4lz52cT)
@@ -132,7 +143,7 @@ func Parse(str string) (Args, error) {
 // has expiry period of one month from date of last login.
 func login(usr, passwd string) (string, error) {
 	link := loginPage()
-	page, msg, err := loadPage(link)
+	page, msg, err := loadPage(link, selCSSFooter)
 	if err != nil {
 		return "", err
 	}
@@ -156,16 +167,16 @@ func login(usr, passwd string) (string, error) {
 	}
 	page.MustElement(".submit").MustClick()
 
-	elm := page.MustElement(selCSSError, selCSSHandle)
-	if elm.MustMatches(selCSSError) {
-		return "", ErrInvalidCredentials
+	page.MustElement(selCSSError, selCSSHandle)
+	if elm := page.MustElements(selCSSHandle); !elm.Empty() {
+		return clean(elm.First().MustText()), nil
 	}
 
-	return clean(elm.MustText()), nil
+	return "", errInvalidCredentials
 }
 
 func logout() error {
-	page, msg, err := loadPage(hostURL)
+	page, msg, err := loadPage(hostURL, selCSSFooter)
 	if err != nil {
 		return err
 	}

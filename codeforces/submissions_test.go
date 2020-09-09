@@ -211,12 +211,12 @@ func TestSubmission_GetSourceCode(t *testing.T) {
 		{
 			name: "Test #1",
 			sub:  Submission{ID: "81012854", Arg: Args{"4", "", "contest", ""}}, // just bare info here
-			want: `d,s=gets.split.map(&:to_i)` + "\n" +
-				`d.times{$*<<gets.split.map(&:to_i)}` + "\n" +
-				`a=$*.transpose` + "\n" +
-				`x=s-a[0].inject(:+)` + "\n" +
-				`puts x<0||s>a[1].inject(:+) ?:NO:"YES` + "\n" +
-				`"+$*.map{|l,r|t=[r-l,x].min;x-=t;l+t}*" "` + "\n",
+			want: `d,s=gets.split.map(&:to_i)
+d.times{$*<<gets.split.map(&:to_i)}
+a=$*.transpose
+x=s-a[0].inject(:+)
+puts x<0||s>a[1].inject(:+) ?:NO:"YES
+"+$*.map{|l,r|t=[r-l,x].min;x-=t;l+t}*" "`,
 			wantErr: false,
 		},
 	}

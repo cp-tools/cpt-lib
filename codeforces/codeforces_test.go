@@ -1,31 +1,29 @@
 package codeforces
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
-
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
 )
 
 func TestMain(m *testing.M) {
 	// setup headless browser to use
 	_, mode := os.LookupEnv("LOCAL_MODE")
 
-	l := launcher.New().UserDataDir("../user-data-dir").
-		Set("blink-settings", "imagesEnabled=false")
-	if mode {
-		l.Bin("google-chrome-stable")
-		l.Headless(false)
-	}
-	Browser = rod.New().ControlURL(l.MustLaunch()).MustConnect()
+	Start(!mode, "../user-data-dir", "google-chrome",
+		[]string{"blink-settings", "imagesEnabled=false"})
 
 	if !mode {
 		// setup login access to use
 		usr := os.Getenv("CODEFORCES_USERNAME")
 		passwd := os.Getenv("CODEFORCES_PASSWORD")
-		login(usr, passwd)
+		_, err := login(usr, passwd)
+		if err != nil {
+			fmt.Println("Login failed:", err)
+			Browser.Close()
+			os.Exit(1)
+		}
 	}
 
 	exitCode := m.Run()
@@ -34,29 +32,9 @@ func TestMain(m *testing.M) {
 	if !mode {
 		logout()
 	}
-	// close the browser instance
+
 	Browser.Close()
-
 	os.Exit(exitCode)
-}
-
-func Test_loginPage(t *testing.T) {
-	tests := []struct {
-		name string
-		want string
-	}{
-		{
-			name: "Login Page",
-			want: "https://codeforces.com/enter",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := loginPage(); got != tt.want {
-				t.Errorf("loginPage() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }
 
 func TestParse(t *testing.T) {
@@ -151,50 +129,6 @@ func TestParse(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Parse() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestLogin(t *testing.T) {
-	type args struct {
-		usr    string
-		passwd string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
-	}{
-		{
-			name: "Login to cp-tools account",
-			args: args{
-				os.Getenv("CODEFORCES_USERNAME"),
-				os.Getenv("CODEFORCES_PASSWORD"),
-			},
-			want:    "cp-tools",
-			wantErr: false,
-		},
-		// can't run wrong login without resetting browser
-		/*{
-			name:    "Invalid login",
-			args:    args{"infixint943", "ThIsNoTmYPASsWd"},
-			want:    "",
-			wantErr: true,
-		},*/
-		// TODO: Add test cases.
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := login(tt.args.usr, tt.args.passwd)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Login() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("Login() = %v, want %v", got, tt.want)
 			}
 		})
 	}
