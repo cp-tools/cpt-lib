@@ -9,45 +9,57 @@ import (
 
 func TestArgs_problemsPage(t *testing.T) {
 	tests := []struct {
-		name     string
-		arg      Args
-		wantLink string
+		name    string
+		arg     Args
+		want    string
+		wantErr bool
 	}{
 		{
-			name:     "Test #1",
-			arg:      Args{"1", "", "contest", ""},
-			wantLink: "https://codeforces.com/contest/1/problems",
+			name:    "Test #1",
+			arg:     Args{"1", "", "contest", ""},
+			want:    "https://codeforces.com/contest/1/problems",
+			wantErr: false,
 		},
 		{
-			name:     "Test #2",
-			arg:      Args{"4", "b", "contest", ""},
-			wantLink: "https://codeforces.com/contest/4/problem/b",
+			name:    "Test #2",
+			arg:     Args{"4", "b", "contest", ""},
+			want:    "https://codeforces.com/contest/4/problem/b",
+			wantErr: false,
 		},
 		{
-			name:     "Test #3",
-			arg:      Args{"102341", "", "gym", ""},
-			wantLink: "https://codeforces.com/gym/102341/problems",
+			name:    "Test #3",
+			arg:     Args{"102341", "", "gym", ""},
+			want:    "https://codeforces.com/gym/102341/problems",
+			wantErr: false,
 		},
 		{
-			name:     "Test #4",
-			arg:      Args{"102323", "a", "gym", ""},
-			wantLink: "https://codeforces.com/gym/102323/problem/a",
+			name:    "Test #4",
+			arg:     Args{"102323", "a", "gym", ""},
+			want:    "https://codeforces.com/gym/102323/problem/a",
+			wantErr: false,
 		},
 		{
-			name:     "Test #5",
-			arg:      Args{"283855", "", "group", "bK73bvp3d7"},
-			wantLink: "https://codeforces.com/group/bK73bvp3d7/contest/283855/problems",
+			name:    "Test #5",
+			arg:     Args{"283855", "", "group", "bK73bvp3d7"},
+			want:    "https://codeforces.com/group/bK73bvp3d7/contest/283855/problems",
+			wantErr: false,
 		},
 		{
-			name:     "Test #6",
-			arg:      Args{"283855", "c", "group", "bK73bvp3d7"},
-			wantLink: "https://codeforces.com/group/bK73bvp3d7/contest/283855/problem/c",
+			name:    "Test #6",
+			arg:     Args{"283855", "c", "group", "bK73bvp3d7"},
+			want:    "https://codeforces.com/group/bK73bvp3d7/contest/283855/problem/c",
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.ProblemsPage(); gotLink != tt.wantLink {
-				t.Errorf("Args.problemsPage() = %v, want %v", gotLink, tt.wantLink)
+			got, err := tt.arg.ProblemsPage()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Args.problemsPage() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Args.problemsPage() = %v, want %v", got, tt.want)
 			}
 		})
 	}

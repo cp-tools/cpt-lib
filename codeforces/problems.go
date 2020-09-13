@@ -37,21 +37,37 @@ const (
 )
 
 // ProblemsPage returns link to problem(s) page in contest
-func (arg Args) ProblemsPage() (link string) {
+func (arg Args) ProblemsPage() (link string, err error) {
 	// problem specified
-	if len(arg.Problem) != 0 {
+	if arg.Problem != "" {
 		if arg.Class == ClassGroup {
+			if arg.Group == "" || arg.Contest == "" {
+				return "", ErrInvalidSpecifier
+			}
+
 			link = fmt.Sprintf("%v/group/%v/contest/%v/problem/%v",
 				hostURL, arg.Group, arg.Contest, arg.Problem)
 		} else {
+			if arg.Contest == "" || (arg.Class != ClassContest && arg.Class != ClassGym) {
+				return "", ErrInvalidSpecifier
+			}
+
 			link = fmt.Sprintf("%v/%v/%v/problem/%v",
 				hostURL, arg.Class, arg.Contest, arg.Problem)
 		}
 	} else {
 		if arg.Class == ClassGroup {
+			if arg.Group == "" || arg.Contest == "" {
+				return "", ErrInvalidSpecifier
+			}
+
 			link = fmt.Sprintf("%v/group/%v/contest/%v/problems",
 				hostURL, arg.Group, arg.Contest)
 		} else {
+			if arg.Class == "" || arg.Contest == "" {
+				return "", ErrInvalidSpecifier
+			}
+
 			link = fmt.Sprintf("%v/%v/%v/problems",
 				hostURL, arg.Class, arg.Contest)
 		}
@@ -70,11 +86,12 @@ func (arg Args) ProblemsPage() (link string) {
 // Doesn't fetch 'SolveStatus' and 'SolveCount' of problem.
 // Use GetDashboard() to fetch these info fields.
 func (arg Args) GetProblems() ([]Problem, error) {
-	if len(arg.Contest) == 0 {
-		return nil, ErrInvalidSpecifier
+
+	link, err := arg.ProblemsPage()
+	if err != nil {
+		return nil, err
 	}
 
-	link := arg.ProblemsPage()
 	page, msg, err := loadPage(link, `.problemindexholder`)
 	if err != nil {
 		return nil, err
@@ -126,7 +143,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 // If submission completed successfully, returns nil error.
 func (arg Args) SubmitSolution(langName string, file string) error {
 	// problem not specifed, return invalid
-	if len(arg.Contest) == 0 || len(arg.Problem) == 0 {
+	if arg.Problem == "" {
 		return ErrInvalidSpecifier
 	}
 
@@ -139,7 +156,11 @@ func (arg Args) SubmitSolution(langName string, file string) error {
 		return fmt.Errorf("Invalid file path")
 	}
 
-	link := arg.ProblemsPage()
+	link, err := arg.ProblemsPage()
+	if err != nil {
+		return err
+	}
+
 	page, msg, err := loadPage(link, selCSSFooter)
 	if err != nil {
 		return err
