@@ -24,32 +24,35 @@ type (
 )
 
 // SubmissionsPage returns link to user submissions
-func (arg Args) SubmissionsPage(handle string) (link string) {
+func (arg Args) SubmissionsPage(handle string) (link string, err error) {
 	// contest specified
-	if len(arg.Contest) != 0 {
+	if arg.Contest != "" {
 		if arg.Class == ClassGroup {
-			// does this even work?!
-			if len(handle) == 0 {
-				link = fmt.Sprintf("%v/group/%v/contest/%v/my",
-					hostURL, arg.Group, arg.Contest)
-			} else {
-				link = fmt.Sprintf("%v/submissions/%v/group/%v/contest/%v",
-					hostURL, handle, arg.Group, arg.Contest)
-			}
+			// groups are not supported.
+			return "", ErrInvalidSpecifier
+		}
+
+		if arg.Class == "" || arg.Contest == "" {
+			return "", ErrInvalidSpecifier
+		}
+
+		if handle == "" {
+			link = fmt.Sprintf("%v/%v/%v/my",
+				hostURL, arg.Class, arg.Contest)
 		} else {
-			if len(handle) == 0 {
-				link = fmt.Sprintf("%v/%v/%v/my",
-					hostURL, arg.Class, arg.Contest)
-			} else {
-				link = fmt.Sprintf("%v/submissions/%v/%v/%v",
-					hostURL, handle, arg.Class, arg.Contest)
-			}
+			link = fmt.Sprintf("%v/submissions/%v/%v/%v",
+				hostURL, handle, arg.Class, arg.Contest)
 		}
+
 	} else {
-		if len(handle) == 0 {
-			// I think this is a bad idea....
-			handle, _ = login("", "")
+		if handle == "" {
+			tmpHandle, err := login("", "")
+			if err != nil {
+				return "", err
+			}
+			handle = tmpHandle
 		}
+
 		link = fmt.Sprintf("%v/submissions/%v",
 			hostURL, handle)
 	}
@@ -57,13 +60,20 @@ func (arg Args) SubmissionsPage(handle string) (link string) {
 }
 
 // SourceCodePage returns link to solution submission
-func (sub Submission) SourceCodePage() (link string) {
-	if sub.Arg.Class == ClassGroup {
+func (sub Submission) SourceCodePage() (link string, err error) {
+	arg := sub.Arg // becomes too long to type otherwise...
+
+	if (arg.Class != ClassContest && arg.Class != ClassGym && arg.Class != ClassGroup) ||
+		arg.Contest == "" || sub.ID == "" {
+		return "", ErrInvalidSpecifier
+	}
+
+	if arg.Class == ClassGroup {
 		link = fmt.Sprintf("%v/group/%v/contest/%v/submission/%v",
-			hostURL, sub.Arg.Group, sub.Arg.Contest, sub.ID)
+			hostURL, arg.Group, arg.Contest, sub.ID)
 	} else {
 		link = fmt.Sprintf("%v/%v/%v/submission/%v",
-			hostURL, sub.Arg.Class, sub.Arg.Contest, sub.ID)
+			hostURL, arg.Class, arg.Contest, sub.ID)
 	}
 	return
 }
@@ -78,11 +88,15 @@ func (sub Submission) SourceCodePage() (link string) {
 // If 'pageCount' > 1, channel will not wait until all verdicts are declared, and will
 // close once verdicts from all specified pages are extracted.
 func (arg Args) GetSubmissions(handle string, pageCount int) (<-chan []Submission, error) {
-	if pageCount < 0 {
-		pageCount = 1e9
+	if pageCount <= 0 {
+		return nil, nil
 	}
 
-	link := arg.SubmissionsPage(handle)
+	link, err := arg.SubmissionsPage(handle)
+	if err != nil {
+		return nil, err
+	}
+
 	page, msg, err := loadPage(link, `tr[data-submission-id]`)
 	if err != nil {
 		return nil, err
@@ -200,11 +214,12 @@ func (arg Args) GetSubmissions(handle string, pageCount int) (<-chan []Submissio
 //
 // Due to a bug on codeforces, groups are not supported.
 func (sub Submission) GetSourceCode() (string, error) {
-	if len(sub.Arg.Contest) == 0 || len(sub.ID) == 0 {
-		return "", ErrInvalidSpecifier
+
+	link, err := sub.SourceCodePage()
+	if err != nil {
+		return "", err
 	}
 
-	link := sub.SourceCodePage()
 	page, msg, err := loadPage(link, `#program-source-text`)
 	if err != nil {
 		return "", err

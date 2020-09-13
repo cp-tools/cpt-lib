@@ -102,7 +102,7 @@ func Parse(str string) (Args, error) {
 	)
 
 	str = strings.TrimSpace(str)
-	if len(str) == 0 {
+	if str == "" {
 		return Args{}, nil
 	}
 
@@ -113,7 +113,7 @@ func Parse(str string) (Args, error) {
 			match := re.FindStringSubmatch(str)
 			result := map[string]string{}
 			for i, name := range re.SubexpNames() {
-				if i != 0 && len(name) > 0 {
+				if i != 0 && name != "" {
 					result[name] = match[i]
 				}
 			}

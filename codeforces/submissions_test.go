@@ -13,34 +13,43 @@ func TestArgs_submissionsPage(t *testing.T) {
 		handle string
 	}
 	tests := []struct {
-		name     string
-		arg      Args
-		args     args
-		wantLink string
+		name    string
+		arg     Args
+		args    args
+		want    string
+		wantErr bool
 	}{
 		{
-			name:     "Test #1",
-			arg:      Args{},
-			args:     args{"cp-tools"},
-			wantLink: "https://codeforces.com/submissions/cp-tools",
+			name:    "Test #1",
+			arg:     Args{},
+			args:    args{"cp-tools"},
+			want:    "https://codeforces.com/submissions/cp-tools",
+			wantErr: false,
 		},
 		{
-			name:     "Test #2",
-			arg:      Args{"4", "a", "contest", ""},
-			args:     args{"cp-tools"},
-			wantLink: "https://codeforces.com/submissions/cp-tools/contest/4",
+			name:    "Test #2",
+			arg:     Args{"4", "a", "contest", ""},
+			args:    args{"cp-tools"},
+			want:    "https://codeforces.com/submissions/cp-tools/contest/4",
+			wantErr: false,
 		},
 		{
-			name:     "Test #3",
-			arg:      Args{"102595", "", "gym", ""},
-			args:     args{"cp-tools"},
-			wantLink: "https://codeforces.com/submissions/cp-tools/gym/102595",
+			name:    "Test #3",
+			arg:     Args{"102595", "", "gym", ""},
+			args:    args{"cp-tools"},
+			want:    "https://codeforces.com/submissions/cp-tools/gym/102595",
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.SubmissionsPage(tt.args.handle); gotLink != tt.wantLink {
-				t.Errorf("Args.submissionsPage() = %v, want %v", gotLink, tt.wantLink)
+			got, err := tt.arg.SubmissionsPage(tt.args.handle)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Args.submissionsPage() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Args.submissionsPage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -48,20 +57,27 @@ func TestArgs_submissionsPage(t *testing.T) {
 
 func TestSubmission_sourceCodePage(t *testing.T) {
 	tests := []struct {
-		name     string
-		sub      Submission
-		wantLink string
+		name    string
+		sub     Submission
+		want    string
+		wantErr bool
 	}{
 		{
-			name:     "Test #1",
-			sub:      Submission{ID: "81011111", Arg: Args{"4", "", "contest", ""}}, // rest is not required
-			wantLink: "https://codeforces.com/contest/4/submission/81011111",
+			name:    "Test #1",
+			sub:     Submission{ID: "81011111", Arg: Args{"4", "", "contest", ""}}, // rest is not required
+			want:    "https://codeforces.com/contest/4/submission/81011111",
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.sub.SourceCodePage(); gotLink != tt.wantLink {
-				t.Errorf("Submission.sourceCodePage() = %v, want %v", gotLink, tt.wantLink)
+			got, err := tt.sub.SourceCodePage()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Submission.sourceCodePage() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Submission.sourceCodePage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -138,7 +154,7 @@ func TestArgs_GetSubmissions(t *testing.T) {
 		{
 			name: "Test #2",
 			arg:  Args{"4", "b", "contest", ""},
-			args: args{"cp-tools", -1},
+			args: args{"cp-tools", 1e9},
 			want: []Submission{
 				{
 					ID:        "81012854",
