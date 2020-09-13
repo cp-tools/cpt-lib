@@ -158,8 +158,13 @@ func login(usr, passwd string) (string, error) {
 	if elm := page.MustElements(selCSSHandle).First(); elm != nil {
 		return clean(elm.MustText()), nil
 	}
-
 	// otherwise, login
+
+	// check if username/password are valid
+	if usr == "" || passwd == "" {
+		return "", errInvalidCredentials
+	}
+
 	page.MustElement("#handleOrEmail").Input(usr)
 	page.MustElement("#password").Input(passwd)
 	if page.MustElement("#remember").MustProperty("checked").Bool() == false {
