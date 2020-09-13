@@ -52,11 +52,19 @@ const (
 )
 
 // CountdownPage returns link to countdown in contest
-func (arg Args) CountdownPage() (link string) {
+func (arg Args) CountdownPage() (link string, err error) {
 	if arg.Class == ClassGroup {
+		if arg.Group == "" || arg.Contest == "" {
+			return "", ErrInvalidSpecifier
+		}
+
 		link = fmt.Sprintf("%v/group/%v/contest/%v/countdown",
 			hostURL, arg.Group, arg.Contest)
 	} else {
+		if arg.Class == "" || arg.Contest == "" {
+			return "", ErrInvalidSpecifier
+		}
+
 		link = fmt.Sprintf("%v/%v/%v/countdown",
 			hostURL, arg.Class, arg.Contest)
 	}
@@ -64,16 +72,28 @@ func (arg Args) CountdownPage() (link string) {
 }
 
 // ContestsPage returns link to all contests page (group/gym/contest)
-func (arg Args) ContestsPage() (link string) {
+func (arg Args) ContestsPage() (link string, err error) {
 	if arg.Class == ClassGroup {
+		if arg.Group == "" {
+			return "", ErrInvalidSpecifier
+		}
+
 		// details of individual contest can't be parsed.
 		// fallback to parsing all contests in group.
 		link = fmt.Sprintf("%v/group/%v/contests?complete=true",
 			hostURL, arg.Group)
 	} else if len(arg.Contest) != 0 {
+		if arg.Contest == "" {
+			return "", ErrInvalidSpecifier
+		}
+
 		link = fmt.Sprintf("%v/contests/%v",
 			hostURL, arg.Contest)
 	} else {
+		if arg.Class == "" {
+			return "", ErrInvalidSpecifier
+		}
+
 		link = fmt.Sprintf("%v/%vs?complete=true",
 			hostURL, arg.Class)
 	}
@@ -81,11 +101,19 @@ func (arg Args) ContestsPage() (link string) {
 }
 
 // DashboardPage returns link to dashboard of contest
-func (arg Args) DashboardPage() (link string) {
+func (arg Args) DashboardPage() (link string, err error) {
 	if arg.Class == ClassGroup {
+		if arg.Group == "" || arg.Contest == "" {
+			return "", ErrInvalidSpecifier
+		}
+
 		link = fmt.Sprintf("%v/group/%v/contest/%v",
 			hostURL, arg.Group, arg.Contest)
 	} else {
+		if arg.Class == "" || arg.Contest == "" {
+			return "", ErrInvalidSpecifier
+		}
+
 		link = fmt.Sprintf("%v/%v/%v",
 			hostURL, arg.Class, arg.Contest)
 	}
@@ -93,7 +121,11 @@ func (arg Args) DashboardPage() (link string) {
 }
 
 // RegisterPage returns link to registration (nor virtual reg) in contest
-func (arg Args) RegisterPage() (link string) {
+func (arg Args) RegisterPage() (link string, err error) {
+	if arg.Contest == "" || arg.Class == ClassGroup || arg.Class == ClassGym {
+		return "", ErrInvalidSpecifier
+	}
+
 	// gyms/groups don't support registration, do they!?
 	link = fmt.Sprintf("%v/contestRegistration/%v",
 		hostURL, arg.Contest)
@@ -107,11 +139,12 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 	// chan has not been implemented here since,
 	// countdown is updated on reload,
 	// and is not websocket based.
-	if len(arg.Contest) == 0 {
-		return 0, ErrInvalidSpecifier
+
+	link, err := arg.CountdownPage()
+	if err != nil {
+		return 0, err
 	}
 
-	link := arg.CountdownPage()
 	page, msg, err := loadPage(link, selCSSFooter)
 	if err != nil {
 		return 0, err
@@ -140,19 +173,14 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 // to fetch respective contest details.
 //
 // Set 'pageCount' to the maximum number of pages (50 rows in each page)
-// you want to be returned. Set to -1 if you want to fetch all pages.
+// you want to be returned.
 func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
-	// MUST define Class type.
-	if arg.Class != ClassGym && arg.Class != ClassGroup && arg.Class != ClassContest {
-		return nil, ErrInvalidSpecifier
+
+	link, err := arg.ContestsPage()
+	if err != nil {
+		return nil, err
 	}
 
-	if pageCount < 0 {
-		// is this large enough?
-		pageCount = 1e9
-	}
-
-	link := arg.ContestsPage()
 	page, msg, err := loadPage(link, `tr[data-contestid]`)
 	if err != nil {
 		return nil, err
@@ -307,11 +335,12 @@ func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
 // GetDashboard parses and returns useful info from
 // contest dashboard page.
 func (arg Args) GetDashboard() (Dashboard, error) {
-	if len(arg.Contest) == 0 {
-		return Dashboard{}, ErrInvalidSpecifier
+
+	link, err := arg.DashboardPage()
+	if err != nil {
+		return Dashboard{}, err
 	}
 
-	link := arg.DashboardPage()
 	page, msg, err := loadPage(link, selCSSFooter)
 	if err != nil {
 		return Dashboard{}, err
@@ -407,12 +436,12 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 // Provides callback method to register current user session
 // in contest. If registration was successful, returns nil error.
 func (arg Args) RegisterForContest() (*RegisterInfo, error) {
-	// ONLY contests support registration
-	if arg.Class != ClassContest || len(arg.Contest) == 0 {
-		return nil, ErrInvalidSpecifier
+
+	link, err := arg.RegisterPage()
+	if err != nil {
+		return nil, err
 	}
 
-	link := arg.RegisterPage()
 	page, msg, err := loadPage(link, selCSSFooter)
 	if err != nil {
 		return nil, err
@@ -430,7 +459,7 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 		Register: func() error {
 			page.MustElement(".submit").MustClick()
 			page.Element(`.contestList`)
-			defer page.Close()
+			page.Close()
 			return nil
 		},
 	}

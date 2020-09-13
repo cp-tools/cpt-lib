@@ -8,30 +8,40 @@ import (
 
 func TestArgs_countdownPage(t *testing.T) {
 	tests := []struct {
-		name     string
-		arg      Args
-		wantLink string
+		name    string
+		arg     Args
+		want    string
+		wantErr bool
 	}{
 		{
-			name:     "Test #1",
-			arg:      Args{"1234", "", "contest", ""},
-			wantLink: "https://codeforces.com/contest/1234/countdown",
+			name:    "Test #1",
+			arg:     Args{"1234", "", "contest", ""},
+			want:    "https://codeforces.com/contest/1234/countdown",
+			wantErr: false,
 		},
 		{
-			name:     "Test #2",
-			arg:      Args{"100001", "", "gym", ""},
-			wantLink: "https://codeforces.com/gym/100001/countdown",
+			name:    "Test #2",
+			arg:     Args{"100001", "", "gym", ""},
+			want:    "https://codeforces.com/gym/100001/countdown",
+			wantErr: false,
 		},
 		{
-			name:     "Test #3",
-			arg:      Args{"277493", "", "group", "MEqF8b6wBT"},
-			wantLink: "https://codeforces.com/group/MEqF8b6wBT/contest/277493/countdown",
+			name:    "Test #3",
+			arg:     Args{"277493", "", "group", "MEqF8b6wBT"},
+			want:    "https://codeforces.com/group/MEqF8b6wBT/contest/277493/countdown",
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.CountdownPage(); gotLink != tt.wantLink {
-				t.Errorf("Args.countdownPage() = %v, want %v", gotLink, tt.wantLink)
+			got, err := tt.arg.CountdownPage()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Args.countdownPage() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Args.countdownPage() = %v, want %v", got, tt.want)
+
 			}
 		})
 	}
@@ -39,40 +49,51 @@ func TestArgs_countdownPage(t *testing.T) {
 
 func TestArgs_contestsPage(t *testing.T) {
 	tests := []struct {
-		name     string
-		arg      Args
-		wantLink string
+		name    string
+		arg     Args
+		want    string
+		wantErr bool
 	}{
 		{
-			name:     "Test #1",
-			arg:      Args{"1234", "", "contest", ""},
-			wantLink: "https://codeforces.com/contests/1234",
+			name:    "Test #1",
+			arg:     Args{"1234", "", "contest", ""},
+			want:    "https://codeforces.com/contests/1234",
+			wantErr: false,
 		},
 		{
-			name:     "Test #2",
-			arg:      Args{"100001", "", "gym", ""},
-			wantLink: "https://codeforces.com/contests/100001",
+			name:    "Test #2",
+			arg:     Args{"100001", "", "gym", ""},
+			want:    "https://codeforces.com/contests/100001",
+			wantErr: false,
 		},
 		{
-			name:     "Test #3",
-			arg:      Args{"277493", "", "group", "MEqF8b6wBT"},
-			wantLink: "https://codeforces.com/group/MEqF8b6wBT/contests?complete=true",
+			name:    "Test #3",
+			arg:     Args{"277493", "", "group", "MEqF8b6wBT"},
+			want:    "https://codeforces.com/group/MEqF8b6wBT/contests?complete=true",
+			wantErr: false,
 		},
 		{
-			name:     "Test #4",
-			arg:      Args{"", "", "contest", ""},
-			wantLink: "https://codeforces.com/contests?complete=true",
+			name:    "Test #4",
+			arg:     Args{"", "", "contest", ""},
+			want:    "https://codeforces.com/contests?complete=true",
+			wantErr: false,
 		},
 		{
-			name:     "Test #5",
-			arg:      Args{"", "", "gym", ""},
-			wantLink: "https://codeforces.com/gyms?complete=true",
+			name:    "Test #5",
+			arg:     Args{"", "", "gym", ""},
+			want:    "https://codeforces.com/gyms?complete=true",
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.ContestsPage(); gotLink != tt.wantLink {
-				t.Errorf("Args.contestsPage() = %v, want %v", gotLink, tt.wantLink)
+			got, err := tt.arg.ContestsPage()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Args.contestsPage() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Args.contestsPage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -80,20 +101,27 @@ func TestArgs_contestsPage(t *testing.T) {
 
 func TestArgs_registerPage(t *testing.T) {
 	tests := []struct {
-		name     string
-		arg      Args
-		wantLink string
+		name    string
+		arg     Args
+		want    string
+		wantErr bool
 	}{
 		{
-			name:     "Test #1",
-			arg:      Args{"1234", "", "contest", ""},
-			wantLink: "https://codeforces.com/contestRegistration/1234",
+			name:    "Test #1",
+			arg:     Args{"1234", "", "contest", ""},
+			want:    "https://codeforces.com/contestRegistration/1234",
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.RegisterPage(); gotLink != tt.wantLink {
-				t.Errorf("Args.registerPage() = %v, want %v", gotLink, tt.wantLink)
+			got, err := tt.arg.RegisterPage()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Args.registerPage() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Args.registerPage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -101,30 +129,39 @@ func TestArgs_registerPage(t *testing.T) {
 
 func TestArgs_dashboardPage(t *testing.T) {
 	tests := []struct {
-		name     string
-		arg      Args
-		wantLink string
+		name    string
+		arg     Args
+		want    string
+		wantErr bool
 	}{
 		{
-			name:     "Test #1",
-			arg:      Args{"1234", "", "contest", ""},
-			wantLink: "https://codeforces.com/contest/1234",
+			name:    "Test #1",
+			arg:     Args{"1234", "", "contest", ""},
+			want:    "https://codeforces.com/contest/1234",
+			wantErr: false,
 		},
 		{
-			name:     "Test #2",
-			arg:      Args{"100001", "", "gym", ""},
-			wantLink: "https://codeforces.com/gym/100001",
+			name:    "Test #2",
+			arg:     Args{"100001", "", "gym", ""},
+			want:    "https://codeforces.com/gym/100001",
+			wantErr: false,
 		},
 		{
-			name:     "Test #3",
-			arg:      Args{"277493", "", "group", "MEqF8b6wBT"},
-			wantLink: "https://codeforces.com/group/MEqF8b6wBT/contest/277493",
+			name:    "Test #3",
+			arg:     Args{"277493", "", "group", "MEqF8b6wBT"},
+			want:    "https://codeforces.com/group/MEqF8b6wBT/contest/277493",
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.DashboardPage(); gotLink != tt.wantLink {
-				t.Errorf("Args.dashboardPage() = %v, want %v", gotLink, tt.wantLink)
+			got, err := tt.arg.DashboardPage()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Args.dashboardPage() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Args.dashboardPage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
