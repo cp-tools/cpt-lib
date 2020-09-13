@@ -82,7 +82,7 @@ func (arg Args) ContestsPage() (link string, err error) {
 		// fallback to parsing all contests in group.
 		link = fmt.Sprintf("%v/group/%v/contests?complete=true",
 			hostURL, arg.Group)
-	} else if len(arg.Contest) != 0 {
+	} else if arg.Contest != "" {
 		if arg.Contest == "" {
 			return "", ErrInvalidSpecifier
 		}
@@ -175,6 +175,9 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 // Set 'pageCount' to the maximum number of pages (50 rows in each page)
 // you want to be returned.
 func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
+	if pageCount <= 0 {
+		return nil, nil
+	}
 
 	link, err := arg.ContestsPage()
 	if err != nil {

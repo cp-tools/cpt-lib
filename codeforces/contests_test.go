@@ -196,7 +196,7 @@ func TestArgs_GetCountdown(t *testing.T) {
 			name:    "Test #4",
 			arg:     Args{"12345", "", "contest", ""},
 			want:    0,
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -245,7 +245,7 @@ func TestArgs_GetContests(t *testing.T) {
 		{
 			name: "Test #2",
 			arg:  Args{"100499", "", "gym", ""},
-			args: args{-1},
+			args: args{1e9},
 			want: []Contest{
 				{
 					Name:        "2014 ACM-ICPC Vietnam National First Round",
