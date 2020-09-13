@@ -140,7 +140,7 @@ func (arg Args) SubmitSolution(langName string, file string) error {
 	}
 
 	link := arg.ProblemsPage()
-	page, msg, err := loadPage(link, `input[name="sourceFile"]`)
+	page, msg, err := loadPage(link, selCSSFooter)
 	if err != nil {
 		return err
 	}
