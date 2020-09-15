@@ -192,7 +192,7 @@ func logout() error {
 	}
 
 	if page.MustHasMatches("a", "Logout") {
-		page.MustElementMatches("a", "Logout").MustClick()
+		page.MustElementR("a", "Logout").MustClick()
 		// page gives a notification on logout
 		page.Element(selCSSNotif)
 	}
