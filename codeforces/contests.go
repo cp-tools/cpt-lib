@@ -328,7 +328,7 @@ func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
 				break
 			}
 			// click navigation button and wait till loads
-			page.MustElementMatches(".pagination li", "→").MustClick()
+			page.MustElementR(".pagination li", "→").MustClick()
 			page.Element(`tr[data-contestid]`)
 		}
 	}()

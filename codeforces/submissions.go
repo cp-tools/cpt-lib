@@ -200,7 +200,7 @@ func (arg Args) GetSubmissions(handle string, pageCount int) (<-chan []Submissio
 					break
 				}
 				// click navigation button and wait till loads
-				page.MustElementMatches(".pagination li", "→").MustClick()
+				page.MustElementR(".pagination li", "→").MustClick()
 				page.Element(`tr[data-submission-id]`)
 			}
 		}
