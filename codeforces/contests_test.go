@@ -397,6 +397,7 @@ func TestArgs_RegisterForContest(t *testing.T) {
 				if currContests[0].RegStatus != RegistrationDone {
 					t.Errorf("Registration failed - %v", currContests[0])
 				}
+				t.Logf("Successfully registered in %v", cont)
 			}
 
 			break
