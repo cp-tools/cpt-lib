@@ -323,7 +323,7 @@ func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
 			chanContests <- contests
 			isFirst = false
 
-			if !page.MustHasMatches(".pagination li", "→") || pageCount == 0 {
+			if !page.MustHasR(".pagination li", "→") || pageCount == 0 {
 				// no more pages to parse
 				break
 			}
