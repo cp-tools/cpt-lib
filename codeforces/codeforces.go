@@ -191,7 +191,7 @@ func logout() error {
 		return fmt.Errorf(msg)
 	}
 
-	if page.MustHasMatches("a", "Logout") {
+	if page.MustHasR("a", "Logout") {
 		page.MustElementR("a", "Logout").MustClick()
 		// page gives a notification on logout
 		page.Element(selCSSNotif)

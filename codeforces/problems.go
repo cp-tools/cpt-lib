@@ -184,7 +184,7 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 
 	// check if specified language can be selected
 	// if this is allowed, so is submitting.
-	if !page.MustHasMatches(`select>option[value]`, regexp.QuoteMeta(langName)) {
+	if !page.MustHasR(`select>option[value]`, regexp.QuoteMeta(langName)) {
 		return nil, fmt.Errorf("Language not allowed in problem")
 	}
 

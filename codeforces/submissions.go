@@ -132,7 +132,7 @@ func (arg Args) GetSubmissions(handle string, pageCount int) (<-chan []Submissio
 				submissions, _ := arg.parseSubmissions(page)
 				chanSubmissions <- submissions
 
-				if !page.MustHasMatches(".pagination li", "→") || pageCount == 0 {
+				if !page.MustHasR(".pagination li", "→") || pageCount == 0 {
 					// no more pages to parse
 					break
 				}
