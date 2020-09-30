@@ -71,9 +71,6 @@ func loginPage() string {
 
 // Parse passed in specifier string to new Args struct.
 // Validates parsed args and returns error if any.
-//
-// List of valid specifiers can be viewed at
-// github.com/cp-tools/codeforces/wiki.
 func Parse(str string) (Args, error) {
 	var (
 		rxCont  = `(?P<cont>\d+)`

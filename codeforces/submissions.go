@@ -83,11 +83,11 @@ func (sub Submission) SourceCodePage() (link string, err error) {
 // of given user. Fetches details of all submissions of handle if args is nil.
 //
 // If handle is not set, fetches submissions of currently active user session.
-// Due to a bug on codeforces, submissions in groups are not supported.
+// Due to a bug on codeforces, submissions in groups in this mode are not supported.
 //
-// Set 'pageCount' to the maximum number of pages of rows you want to be scraped.
+// Set 'pageCount' to the maximum number of pages (50 rows per page) you want to be scraped.
 // If 'pageCount' > 1, channel will not wait until all verdicts are declared, and will
-// close once verdicts from all specified pages are extracted.
+// close once submission data from all specified pages are extracted.
 func (arg Args) GetSubmissions(handle string, pageCount int) (<-chan []Submission, error) {
 	if pageCount <= 0 {
 		return nil, nil

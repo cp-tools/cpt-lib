@@ -120,7 +120,7 @@ func (arg Args) DashboardPage() (link string, err error) {
 	return
 }
 
-// RegisterPage returns link to registration (nor virtual reg) in contest
+// RegisterPage returns link to registration (not virtual reg) in contest
 func (arg Args) RegisterPage() (link string, err error) {
 	if arg.Contest == "" || arg.Class == ClassGroup || arg.Class == ClassGym {
 		return "", ErrInvalidSpecifier
@@ -134,7 +134,7 @@ func (arg Args) RegisterPage() (link string, err error) {
 
 // GetCountdown parses and returns duration type for countdown
 // in specified contest to end. If countdown has already ended,
-// returns 0. Extracts data from .../contest/<contest>/countdown.
+// returns 0.
 func (arg Args) GetCountdown() (time.Duration, error) {
 	// chan has not been implemented here since,
 	// countdown is updated on reload,
