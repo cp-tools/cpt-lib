@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/go-rod/rod"
 )
 
 type (
@@ -115,84 +116,20 @@ func (arg Args) GetSubmissions(handle string, pageCount int) (<-chan []Submissio
 		defer page.Close()
 		defer close(chanSubmissions)
 
-		// parse submissions from current page
-		parseFunc := func() ([]Submission, bool) {
-			submissions := make([]Submission, 0)
-			isDone := true
-
-			doc := processHTML(page)
-			// WARNING! ugly extraction code ahead. Don't peep XD
-			table := doc.Find("tr[data-submission-id]")
-			table.Each(func(_ int, row *goquery.Selection) {
-				var submissionRow Submission
-				// extract contest args from html attr label
-				subArg, _ := Parse(hostURL + getAttr(row, "td:nth-of-type(4) a", "href"))
-				if arg.Problem != "" && arg.Problem != subArg.Problem {
-					return
-				}
-				submissionRow.Arg = subArg
-
-				row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
-					switch cellIdx {
-					case 0:
-						id := clean(cell.Text())
-						submissionRow.ID = id
-
-					case 1:
-						when := parseTime(clean(cell.Text()))
-						submissionRow.When = when
-
-					case 2:
-						who := clean(cell.Text())
-						submissionRow.Who = who
-
-					case 3:
-						problem := clean(cell.Text())
-						submissionRow.Problem = problem
-
-					case 4:
-						language := clean(cell.Text())
-						submissionRow.Language = language
-
-					case 5:
-						isJudging := cell.AttrOr("waiting", "") == "true"
-						submissionRow.IsJudging = isJudging
-						if isJudging == true {
-							isDone = false
-						}
-
-						verdict := clean(cell.Text())
-						submissionRow.Verdict = verdict
-
-					case 6:
-						time := clean(cell.Text())
-						submissionRow.Time = time
-
-					case 7:
-						memory := clean(cell.Text())
-						submissionRow.Memory = memory
-					}
-				})
-				submissions = append(submissions, submissionRow)
-			})
-
-			return submissions, isDone
-		}
-
 		if pageCount == 1 {
 			// loop till 'isDone' is true
 			for true {
-				submissions, isDone := parseFunc()
+				submissions, isDone := arg.parseSubmissions(page)
 				chanSubmissions <- submissions
 				if isDone == true {
 					break
 				}
-				time.Sleep(time.Millisecond * 500)
+				time.Sleep(time.Millisecond * 350)
 			}
 		} else {
 			// iterate till no more valid required pages left
 			for ; pageCount > 0; pageCount-- {
-				submissions, _ := parseFunc()
+				submissions, _ := arg.parseSubmissions(page)
 				chanSubmissions <- submissions
 
 				if !page.MustHasMatches(".pagination li", "→") || pageCount == 0 {
@@ -234,4 +171,68 @@ func (sub Submission) GetSourceCode() (string, error) {
 	source := page.MustEval(`document.querySelector(
 		"#program-source-text").innerText`).String()
 	return source, nil
+}
+
+// parse specified submissions from current page
+func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
+	submissions := make([]Submission, 0)
+	isDone := true
+
+	doc := processHTML(page)
+	// WARNING! ugly extraction code ahead. Don't peep XD
+	table := doc.Find("tr[data-submission-id]")
+	table.Each(func(_ int, row *goquery.Selection) {
+		var submissionRow Submission
+		// extract contest args from html attr label
+		subArg, _ := Parse(hostURL + getAttr(row, "td:nth-of-type(4) a", "href"))
+		if arg.Problem != "" && arg.Problem != subArg.Problem {
+			return
+		}
+		submissionRow.Arg = subArg
+
+		row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+			switch cellIdx {
+			case 0:
+				id := clean(cell.Text())
+				submissionRow.ID = id
+
+			case 1:
+				when := parseTime(clean(cell.Text()))
+				submissionRow.When = when
+
+			case 2:
+				who := clean(cell.Text())
+				submissionRow.Who = who
+
+			case 3:
+				problem := clean(cell.Text())
+				submissionRow.Problem = problem
+
+			case 4:
+				language := clean(cell.Text())
+				submissionRow.Language = language
+
+			case 5:
+				isJudging := cell.AttrOr("waiting", "") == "true"
+				submissionRow.IsJudging = isJudging
+				if isJudging == true {
+					isDone = false
+				}
+
+				verdict := clean(cell.Text())
+				submissionRow.Verdict = verdict
+
+			case 6:
+				time := clean(cell.Text())
+				submissionRow.Time = time
+
+			case 7:
+				memory := clean(cell.Text())
+				submissionRow.Memory = memory
+			}
+		})
+		submissions = append(submissions, submissionRow)
+	})
+
+	return submissions, isDone
 }

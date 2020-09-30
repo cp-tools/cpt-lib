@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -141,44 +142,50 @@ func (arg Args) GetProblems() ([]Problem, error) {
 // file is the submissions file to upload on the form.
 //
 // If submission completed successfully, returns nil error.
-func (arg Args) SubmitSolution(langName string, file string) error {
+func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission, error) {
 	// problem not specifed, return invalid
 	if arg.Problem == "" {
-		return ErrInvalidSpecifier
+		return nil, ErrInvalidSpecifier
 	}
 
 	if _, ok := LanguageID[langName]; !ok {
-		return fmt.Errorf("Invalid language")
+		return nil, fmt.Errorf("Invalid language")
 	}
 
 	// check if given file exists
 	if fl, err := os.Stat(file); os.IsNotExist(err) || fl.IsDir() {
-		return fmt.Errorf("Invalid file path")
+		return nil, fmt.Errorf("Invalid file path")
 	}
 
 	link, err := arg.ProblemsPage()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	page, msg, err := loadPage(link, selCSSFooter)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer page.Close()
 
 	if msg != "" {
-		return fmt.Errorf(msg)
+		return nil, fmt.Errorf(msg)
 	}
 
 	// check if user is logged in
 	if !page.MustHas(selCSSHandle) {
-		return fmt.Errorf("No logged in session present")
+		return nil, fmt.Errorf("No logged in session present")
+	}
+
+	// check if submitting is possible at all.
+	if !page.MustHas(`input.submit`) {
+		return nil, fmt.Errorf("Problem not open for submission")
 	}
 
 	// check if specified language can be selected
+	// if this is allowed, so is submitting.
 	if !page.MustHasMatches(`select>option[value]`, regexp.QuoteMeta(langName)) {
-		return fmt.Errorf("Language not supported")
+		return nil, fmt.Errorf("Language not allowed in problem")
 	}
 
 	// do the submitting here! (really simple)
@@ -191,7 +198,24 @@ func (arg Args) SubmitSolution(langName string, file string) error {
 	if elm.MustMatches(selCSSError) {
 		// static error message (exact submission done before)
 		msg := clean(elm.MustText())
-		return fmt.Errorf(msg)
+		return nil, fmt.Errorf(msg)
 	}
-	return nil
+
+	// return live progress of submission
+	chanSubmission := make(chan Submission, 500)
+	go func() {
+		defer page.Close()
+		defer close(chanSubmission)
+
+		for true {
+			submissions, _ := arg.parseSubmissions(page)
+			chanSubmission <- submissions[0]
+			if submissions[0].IsJudging == false {
+				break
+			}
+			time.Sleep(time.Millisecond * 350)
+		}
+	}()
+
+	return chanSubmission, nil
 }
