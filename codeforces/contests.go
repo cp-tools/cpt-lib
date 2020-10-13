@@ -145,10 +145,7 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 		return 0, err
 	}
 
-	page, msg, err := loadPage(link, selCSSFooter)
-	if err != nil {
-		return 0, err
-	}
+	page, msg := loadPage(link, selCSSFooter)
 	defer page.Close()
 
 	if msg != "" {
@@ -184,10 +181,7 @@ func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link, `tr[data-contestid]`)
-	if err != nil {
-		return nil, err
-	}
+	page, msg := loadPage(link, `tr[data-contestid]`)
 
 	if msg != "" {
 		return nil, fmt.Errorf(msg)
@@ -344,10 +338,7 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 		return Dashboard{}, err
 	}
 
-	page, msg, err := loadPage(link, selCSSFooter)
-	if err != nil {
-		return Dashboard{}, err
-	}
+	page, msg := loadPage(link, selCSSFooter)
 	defer page.Close()
 
 	if msg != "" {
@@ -445,10 +436,7 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link, selCSSFooter)
-	if err != nil {
-		return nil, err
-	}
+	page, msg := loadPage(link, selCSSFooter)
 
 	if msg != "" {
 		return nil, fmt.Errorf(msg)
