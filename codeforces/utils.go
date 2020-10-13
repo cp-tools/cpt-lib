@@ -19,18 +19,15 @@ var (
 	selCSSError  = `.error`
 )
 
-func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
-	page, err := Browser.Page(link)
-	if err != nil {
-		return nil, "", err
-	}
+func loadPage(link string, selMatch ...string) (*rod.Page, string) {
+	page := Browser.MustPage(link)
 
 	selMatch = append(selMatch, selCSSNotif)
 	elm := page.MustElement(selMatch...)
 	if elm.MustMatches(selCSSNotif) {
-		return page, clean(elm.MustText()), nil
+		return page, clean(elm.MustText())
 	}
-	return page, "", nil
+	return page, ""
 }
 
 func processHTML(page *rod.Page) *goquery.Document {

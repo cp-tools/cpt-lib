@@ -93,10 +93,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link, `.problemindexholder`)
-	if err != nil {
-		return nil, err
-	}
+	page, msg := loadPage(link, `.problemindexholder`)
 	defer page.Close()
 
 	if msg != "" {
@@ -163,10 +160,7 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link, selCSSFooter)
-	if err != nil {
-		return nil, err
-	}
+	page, msg := loadPage(link, selCSSFooter)
 	defer page.Close()
 
 	if msg != "" {

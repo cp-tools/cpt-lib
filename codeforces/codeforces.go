@@ -41,13 +41,27 @@ var (
 )
 
 // Start initiates the headless browser to use.
-func Start(headless bool, userDataDir, bin string, flags ...[]string) {
-	l := launcher.New().UserDataDir(userDataDir).
-		Headless(headless).Bin(bin)
+func Start(headless bool, userDataDir, bin string, flags ...[]string) error {
+	l := launcher.New().
+		UserDataDir(userDataDir).
+		Headless(headless).
+		Bin(bin)
+
 	for _, flag := range flags {
 		l.Set(flag[0], flag[1:]...)
 	}
-	Browser = rod.New().ControlURL(l.MustLaunch()).MustConnect()
+
+	ls, err := l.Launch()
+	if err != nil {
+		return err
+	}
+
+	Browser = rod.New()
+	if err := Browser.ControlURL(ls).Connect(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (arg Args) String() string {
@@ -140,10 +154,7 @@ func Parse(str string) (Args, error) {
 // has expiry period of one month from date of last login.
 func login(usr, passwd string) (string, error) {
 	link := loginPage()
-	page, msg, err := loadPage(link, selCSSFooter)
-	if err != nil {
-		return "", err
-	}
+	page, msg := loadPage(link, selCSSFooter)
 	defer page.Close()
 
 	if msg != "" {
@@ -178,10 +189,7 @@ func login(usr, passwd string) (string, error) {
 }
 
 func logout() error {
-	page, msg, err := loadPage(hostURL, selCSSFooter)
-	if err != nil {
-		return err
-	}
+	page, msg := loadPage(hostURL, selCSSFooter)
 	defer page.Close()
 
 	if msg != "" {
