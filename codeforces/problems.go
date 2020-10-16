@@ -161,8 +161,6 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 	}
 
 	page, msg := loadPage(link, selCSSFooter)
-	defer page.Close()
-
 	if msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
