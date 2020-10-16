@@ -162,22 +162,26 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 
 	page, msg := loadPage(link, selCSSFooter)
 	if msg != "" {
+		defer page.Close()
 		return nil, fmt.Errorf(msg)
 	}
 
 	// check if user is logged in
 	if !page.MustHas(selCSSHandle) {
+		defer page.Close()
 		return nil, fmt.Errorf("No logged in session present")
 	}
 
 	// check if submitting is possible at all.
 	if !page.MustHas(`input.submit`) {
+		defer page.Close()
 		return nil, fmt.Errorf("Problem not open for submission")
 	}
 
 	// check if specified language can be selected
 	// if this is allowed, so is submitting.
 	if !page.MustHasR(`select>option[value]`, regexp.QuoteMeta(langName)) {
+		defer page.Close()
 		return nil, fmt.Errorf("Language not allowed in problem")
 	}
 
@@ -190,6 +194,7 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 
 	if elm.MustMatches(selCSSError) {
 		// static error message (exact submission done before)
+		defer page.Close()
 		msg := clean(elm.MustText())
 		return nil, fmt.Errorf(msg)
 	}

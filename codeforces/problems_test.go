@@ -452,14 +452,17 @@ func TestArgs_SubmitSolution(t *testing.T) {
 				t.Errorf("Args.SubmitSolution() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			finalSub := Submission{}
-			for sub := range submission {
-				finalSub = sub
+			if err == nil {
+				finalSub := Submission{}
+				for sub := range submission {
+					finalSub = sub
+				}
+
+				if finalSub.Verdict != "Compilation error" {
+					t.Errorf("Args.SubmitSolution() finalSub = %v", finalSub)
+				}
 			}
 
-			if finalSub.Verdict != "Compilation error" {
-				t.Errorf("Args.SubmitSolution() finalSub = %v", finalSub)
-			}
 		})
 	}
 }

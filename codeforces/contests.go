@@ -184,6 +184,7 @@ func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
 	page, msg := loadPage(link, `tr[data-contestid]`)
 
 	if msg != "" {
+		defer page.Close()
 		return nil, fmt.Errorf(msg)
 	}
 
