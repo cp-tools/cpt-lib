@@ -447,8 +447,18 @@ func TestArgs_SubmitSolution(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if _, err := tt.arg.SubmitSolution(tt.args.langID, tt.args.source); (err != nil) != tt.wantErr {
+			submission, err := tt.arg.SubmitSolution(tt.args.langID, tt.args.source)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.SubmitSolution() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			finalSub := Submission{}
+			for sub := range submission {
+				finalSub = sub
+			}
+
+			if finalSub.Verdict != "Compilation error" {
+				t.Errorf("Args.SubmitSolution() finalSub = %v", finalSub)
 			}
 		})
 	}
