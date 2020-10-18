@@ -162,8 +162,8 @@ func (sub Submission) GetSourceCode() (string, error) {
 	}
 
 	// extract source code from html body
-	source := page.MustEval(`document.querySelector(
-		"#program-source-text").innerText`).String()
+	source := page.MustEval(`Codeforces.filterClipboardText(
+		document.querySelector("#program-source-text").innerText)`).String()
 	return source, nil
 }
 
