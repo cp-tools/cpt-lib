@@ -66,7 +66,7 @@ func (arg Args) GetSubmission() (<-chan TestCaseVerdict, string, error) {
 		for true {
 			doc := processHTML(page)
 			// order of statements below matters
-			judgeDone := page.MustHasMatches(`#last-status>p`,
+			judgeDone := page.MustHasR(`#last-status>p`,
 				`Results below show the outcome`)
 			testcases := doc.Find(`#trial-information .masterTooltip`)
 
