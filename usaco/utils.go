@@ -15,10 +15,7 @@ var (
 )
 
 func loadPage(link string) (*rod.Page, error) {
-	page, err := Browser.Page(link)
-	if err != nil {
-		return nil, err
-	}
+	page := Browser.MustPage(link)
 
 	page.Element(selCSSNavbar)
 	return page, nil

@@ -88,7 +88,7 @@ func login(usr, passwd string) (string, error) {
 	page.MustElement(`input[name="password"]`).Input(passwd)
 	page.MustElement(`input[value="Login"]`).MustClick()
 
-	elm := page.MustElementMatches(selCSSHandle, `.*`,
+	elm := page.MustElementR(selCSSHandle, `.*`,
 		selCSSFormErr, `Incorrect password`)
 	if elm.MustMatches(selCSSFormErr) {
 		return "", errInvalidCredentials
@@ -104,8 +104,8 @@ func logout() error {
 	}
 	defer page.Close()
 
-	if page.MustHasMatches(`button`, `Logout`) {
-		page.MustElementMatches(`button`, `Logout`).MustClick()
+	if page.MustHasR(`button`, `Logout`) {
+		page.MustElementR(`button`, `Logout`).MustClick()
 		// page gives a notification on logout
 		page.Element(`input[value="Login"]`)
 	}
