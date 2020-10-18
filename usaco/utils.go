@@ -6,6 +6,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
 )
 
 var (
@@ -16,6 +17,19 @@ var (
 
 func loadPage(link string) (*rod.Page, error) {
 	page := Browser.MustPage(link)
+	// Disable CSS and Img in webpage.
+	router := page.HijackRequests()
+	router.MustAdd("*", func(h *rod.Hijack) {
+		if h.Request.Type() == proto.NetworkResourceTypeImage ||
+			h.Request.Type() == proto.NetworkResourceTypeFont ||
+			h.Request.Type() == proto.NetworkResourceTypeStylesheet ||
+			h.Request.Type() == proto.NetworkResourceTypeMedia {
+			h.Response.Fail(proto.NetworkErrorReasonBlockedByClient)
+			return
+		}
+		h.ContinueRequest(&proto.FetchContinueRequest{})
+	})
+	go router.Run()
 
 	page.Element(selCSSNavbar)
 	return page, nil
