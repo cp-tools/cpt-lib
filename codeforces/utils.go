@@ -36,7 +36,7 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string) {
 	})
 	go router.Run()
 
-	selMatch = append(selMatch, selCSSNotif)
+	selMatch = append([]string{selCSSNotif}, selMatch...)
 	elm := page.MustElement(selMatch...)
 	if elm.MustMatches(selCSSNotif) {
 		return page, clean(elm.MustText())
