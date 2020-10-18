@@ -43,38 +43,58 @@ var (
 
 // Start initiates the headless browser to use.
 func Start(headless bool, userDataDir, bin string, flags ...[]string) error {
-	// Lauch browser to extract cookies.
-	cURL := launcher.NewUserMode().
+	// Add flags to launcher.
+	addFlags := func(l *launcher.Launcher) {
+		for _, flag := range flags {
+			l.Set(flag[0], flag[1:]...)
+		}
+	}
+	// Launch browser.
+	launchBrowser := func(controlURL string) (*rod.Browser, error) {
+		b := rod.New().ControlURL(controlURL)
+		if err := b.Connect(); err != nil {
+			return nil, err
+		}
+		return b, nil
+	}
+
+	// Initiate browser to extract cookies from.
+	cookiesl := launcher.NewUserMode().
 		UserDataDir(userDataDir).
 		Headless(true).
-		Bin(bin).
-		MustLaunch()
-
-	cBrowser := rod.New()
-	if err := cBrowser.ControlURL(cURL).Connect(); err != nil {
-		return err
-	}
-	defer cBrowser.Close()
-
-	// Launch browser to use.
-	l := launcher.New().
-		UserDataDir(filepath.Join(userDataDir, "cpt-lib")).
-		Headless(headless).
 		Bin(bin)
-	for _, flag := range flags {
-		l.Set(flag[0], flag[1:]...)
-	}
+	addFlags(cookiesl)
 
-	ls, err := l.Launch()
+	cookiesControlURL, err := cookiesl.Launch()
 	if err != nil {
 		return err
 	}
 
-	Browser = rod.New()
-	if err := Browser.ControlURL(ls).Connect(); err != nil {
+	cookiesBrowser, err := launchBrowser(cookiesControlURL)
+	if err != nil {
 		return err
 	}
-	Browser.MustSetCookies(cBrowser.MustGetCookies())
+	defer cookiesBrowser.Close()
+
+	// Initiate the browser to use.
+	l := launcher.New().
+		UserDataDir(filepath.Join(userDataDir, "cpt-lib")).
+		Headless(headless).
+		Bin(bin)
+	addFlags(l)
+
+	controlURL, err := l.Launch()
+	if err != nil {
+		return err
+	}
+
+	Browser, err = launchBrowser(controlURL)
+	if err != nil {
+		return err
+	}
+
+	// Copy cookies of user.
+	Browser.MustSetCookies(cookiesBrowser.MustGetCookies())
 
 	return nil
 }
