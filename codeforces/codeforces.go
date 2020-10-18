@@ -2,6 +2,7 @@ package codeforces
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -42,11 +43,24 @@ var (
 
 // Start initiates the headless browser to use.
 func Start(headless bool, userDataDir, bin string, flags ...[]string) error {
-	l := launcher.New().
+	// Lauch browser to extract cookies.
+	cURL := launcher.NewUserMode().
 		UserDataDir(userDataDir).
+		Headless(true).
+		Bin(bin).
+		MustLaunch()
+
+	cBrowser := rod.New()
+	if err := cBrowser.ControlURL(cURL).Connect(); err != nil {
+		return err
+	}
+	defer cBrowser.Close()
+
+	// Launch browser to use.
+	l := launcher.New().
+		UserDataDir(filepath.Join(userDataDir, "cpt-lib")).
 		Headless(headless).
 		Bin(bin)
-
 	for _, flag := range flags {
 		l.Set(flag[0], flag[1:]...)
 	}
@@ -60,6 +74,7 @@ func Start(headless bool, userDataDir, bin string, flags ...[]string) error {
 	if err := Browser.ControlURL(ls).Connect(); err != nil {
 		return err
 	}
+	Browser.MustSetCookies(cBrowser.MustGetCookies())
 
 	return nil
 }
