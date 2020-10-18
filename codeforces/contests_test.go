@@ -196,7 +196,13 @@ func TestArgs_GetCountdown(t *testing.T) {
 			name:    "Test #4",
 			arg:     Args{"12345", "", "contest", ""},
 			want:    0,
-			wantErr: false,
+			wantErr: true, // No such contest
+		},
+		{
+			name:    "Test #5",
+			arg:     Args{"942", "", "", ""},
+			want:    0,
+			wantErr: true, // You are not allowed to view the contest
 		},
 	}
 	for _, tt := range tests {
