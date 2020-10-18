@@ -1,6 +1,9 @@
 package codeforces
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 	"time"
@@ -194,8 +197,9 @@ func TestArgs_GetSubmissions(t *testing.T) {
 	}
 }
 
-/*
 func TestArgs_ChanGetSubmissions(t *testing.T) {
+	t.Skip() // Works as expected.
+
 	// get (some) submission to submit
 	arg, _ := Parse("1132c")
 	chanSubmissions, _ := arg.GetSubmissions("hohomu", 1)
@@ -213,9 +217,7 @@ func TestArgs_ChanGetSubmissions(t *testing.T) {
 	for submissions := range chanSubmissions {
 		t.Log(submissions[0].Verdict)
 	}
-	// works as expected!
 }
-*/
 
 func TestSubmission_GetSourceCode(t *testing.T) {
 	tests := []struct {
