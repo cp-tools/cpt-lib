@@ -2,10 +2,12 @@ package usaco
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
 )
 
 type (
@@ -28,6 +30,64 @@ var (
 	// Browser is the headless browser to use.
 	Browser *rod.Browser
 )
+
+// Start initiates the headless browser to use.
+func Start(headless bool, userDataDir, bin string, flags ...[]string) error {
+	// Add flags to launcher.
+	addFlags := func(l *launcher.Launcher) {
+		for _, flag := range flags {
+			l.Set(flag[0], flag[1:]...)
+		}
+	}
+	// Launch browser.
+	launchBrowser := func(controlURL string) (*rod.Browser, error) {
+		b := rod.New().ControlURL(controlURL)
+		if err := b.Connect(); err != nil {
+			return nil, err
+		}
+		return b, nil
+	}
+
+	// Initiate browser to extract cookies from.
+	cookiesl := launcher.NewUserMode().
+		UserDataDir(userDataDir).
+		Headless(true).
+		Bin(bin)
+	addFlags(cookiesl)
+
+	cookiesControlURL, err := cookiesl.Launch()
+	if err != nil {
+		return err
+	}
+
+	cookiesBrowser, err := launchBrowser(cookiesControlURL)
+	if err != nil {
+		return err
+	}
+	defer cookiesBrowser.Close()
+
+	// Initiate the browser to use.
+	l := launcher.New().
+		UserDataDir(filepath.Join(userDataDir, "cpt-lib")).
+		Headless(headless).
+		Bin(bin)
+	addFlags(l)
+
+	controlURL, err := l.Launch()
+	if err != nil {
+		return err
+	}
+
+	Browser, err = launchBrowser(controlURL)
+	if err != nil {
+		return err
+	}
+
+	// Copy cookies of user.
+	Browser.MustSetCookies(cookiesBrowser.MustGetCookies())
+
+	return nil
+}
 
 // Parse passed in specifier string to new Args struct.
 // Validates parsed args and returns error if any.
