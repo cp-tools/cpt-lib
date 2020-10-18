@@ -237,6 +237,41 @@ puts x<0||s>a[1].inject(:+) ?:NO:"YES
 "+$*.map{|l,r|t=[r-l,x].min;x-=t;l+t}*" "`,
 			wantErr: false,
 		},
+		{
+			name: "Test #1",
+			sub:  Submission{ID: "95913201", Arg: Args{"1359", "", "contest", ""}}, // just bare info here
+			want: `//go corona go
+#include <bits/stdc++.h>
+#include<cmath>
+using namespace std;
+
+int main() {
+	int n;
+	cin>>n;
+	vector<int> arr(n);
+	for(int i=0; i<n; i++){
+		cin>>arr[i];
+	}
+	vector<int> dp(n);
+	vector<int> maxi(n);
+	dp[0]=arr[0];
+	maxi[0]=dp[0];
+	int m=0;
+	for(int i=1; i<n; i++){
+		if((dp[i-1]+arr[i])>arr[i]){
+			dp[i]=dp[i-1]+arr[i];
+			maxi[i]=max(maxi[i-1],arr[i]);
+		}
+		else{
+			dp[i]=arr[i];
+			maxi[i]=arr[i];
+		}
+		m=max(m,(dp[i]-maxi[i]));
+	}
+	cout<<m<<endl;
+}`,
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
