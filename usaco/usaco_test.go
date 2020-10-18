@@ -1,39 +1,37 @@
 package usaco
 
 import (
+	"fmt"
 	"os"
 	"testing"
-
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
 )
 
 func TestMain(m *testing.M) {
 	// setup headless browser to use
 	_, mode := os.LookupEnv("LOCAL_MODE")
 
-	l := launcher.New().UserDataDir("../user-data-dir").
-		Set("blink-settings", "imagesEnabled=false")
-	if mode {
-		// trigger build
-		l.Headless(false)
-		l.Bin("google-chrome-stable")
-	}
-	Browser = rod.New().ControlURL(l.MustLaunch()).MustConnect()
+	Start(!mode, "../user-data-dir", "google-chrome",
+		[]string{"disable-extensions"})
 
 	// setup login access to use
 	usr := os.Getenv("USACO_USERNAME")
 	passwd := os.Getenv("USACO_PASSWORD")
-	login(usr, passwd)
+	_, err := login(usr, passwd)
+	if err != nil {
+		fmt.Println("Login failed:", err)
+		Browser.Close()
+		os.Exit(1)
+	}
 
 	exitCode := m.Run()
 
 	// logout current user
-	if !mode {
-		logout()
+	if err := logout(); err != nil {
+		fmt.Println("Logout failed:", err)
+		Browser.Close()
+		os.Exit(1)
 	}
-	// close the browser instance
-	Browser.Close()
 
+	Browser.Close()
 	os.Exit(exitCode)
 }
