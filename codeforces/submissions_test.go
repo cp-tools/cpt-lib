@@ -89,7 +89,7 @@ func TestSubmission_sourceCodePage(t *testing.T) {
 func TestArgs_GetSubmissions(t *testing.T) {
 	type args struct {
 		handle string
-		count  int
+		count  uint
 	}
 	tests := []struct {
 		name    string

@@ -221,7 +221,7 @@ func TestArgs_GetCountdown(t *testing.T) {
 
 func TestArgs_GetContests(t *testing.T) {
 	type args struct {
-		pageCount int
+		pageCount uint
 	}
 	tests := []struct {
 		name    string
