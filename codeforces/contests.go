@@ -73,30 +73,37 @@ func (arg Args) CountdownPage() (link string, err error) {
 
 // ContestsPage returns link to all contests page (group/gym/contest)
 func (arg Args) ContestsPage() (link string, err error) {
-	if arg.Class == ClassGroup {
+
+	switch arg.Class {
+	case ClassGroup:
 		if arg.Group == "" {
 			return "", ErrInvalidSpecifier
 		}
 
 		// details of individual contest can't be parsed.
 		// fallback to parsing all contests in group.
-		link = fmt.Sprintf("%v/group/%v/contests?complete=true",
-			hostURL, arg.Group)
-	} else if arg.Contest != "" {
+		link = fmt.Sprintf("%v/group/%v/contests?complete=true", hostURL, arg.Group)
+
+	case ClassContest:
 		if arg.Contest == "" {
-			return "", ErrInvalidSpecifier
+			link = fmt.Sprintf("%v/contests?complete=true", hostURL)
+			return
 		}
 
-		link = fmt.Sprintf("%v/contests/%v",
-			hostURL, arg.Contest)
-	} else {
-		if arg.Class == "" {
-			return "", ErrInvalidSpecifier
+		link = fmt.Sprintf("%v/contests/%v", hostURL, arg.Contest)
+
+	case ClassGym:
+		if arg.Contest == "" {
+			link = fmt.Sprintf("%v/gyms?complete=true", hostURL)
+			return
 		}
 
-		link = fmt.Sprintf("%v/%vs?complete=true",
-			hostURL, arg.Class)
+		link = fmt.Sprintf("%v/contests/%v", hostURL, arg.Contest)
+
+	default:
+		return "", ErrInvalidSpecifier
 	}
+
 	return
 }
 
