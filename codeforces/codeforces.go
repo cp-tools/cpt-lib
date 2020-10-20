@@ -124,7 +124,7 @@ func Parse(str string) (Args, error) {
 	var (
 		rxCont  = `(?P<cont>\d+)`
 		rxProb  = `(?P<prob>[A-Za-z][1-9]?)`
-		rxClass = `(?P<class>contest|gym|group|problemset)`
+		rxClass = `(?P<class>contest|gym|group)`
 		rxGroup = `(?P<group>\w{10})`
 
 		valRx = []string{
@@ -132,18 +132,15 @@ func Parse(str string) (Args, error) {
 			`codeforces.com\/` + rxClass + `\/` + rxCont + `\/problem\/` + rxProb + `$`,
 			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + `contest` + `\/` + rxCont + `$`,
 			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + `contest` + `\/` + rxCont + `\/problem\/` + rxProb + `$`,
-			`codeforces.com\/` + rxClass + `\/problem\/` + rxCont + `\/` + rxProb + `$`,
+			`codeforces.com\/problemset\/problem\/` + rxCont + `\/` + rxProb + `$`,
+
+			`^\s*` + rxClass + `$`,
+			`^\s*` + rxGroup + `$`,
 
 			`^\s*` + rxCont + `$`,
 			`^\s*` + rxCont + `\s*` + rxProb + `$`,
 			`^\s*` + rxGroup + `\s*` + rxCont + `$`,
 			`^\s*` + rxGroup + `\s*` + rxCont + `\s*` + rxProb + `$`,
-
-			// for local folders parsing
-			`^\s*` + rxClass + `\s*` + rxCont + `$`,
-			`^\s*` + rxClass + `\s*` + rxCont + `\s*` + rxProb + `$`,
-			`^\s*` + rxClass + `\s*` + rxGroup + `\s*` + rxCont + `$`,
-			`^\s*` + rxClass + `\s*` + rxGroup + `\s*` + rxCont + `\s*` + rxProb + `$`,
 		}
 	)
 
