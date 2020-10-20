@@ -171,11 +171,7 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 //
 // Set 'pageCount' to the maximum number of pages (50 rows in each page)
 // you want to be returned.
-func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
-	if pageCount <= 0 {
-		return nil, nil
-	}
-
+func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 	link, err := arg.ContestsPage()
 	if err != nil {
 		return nil, err

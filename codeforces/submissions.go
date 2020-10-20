@@ -88,11 +88,7 @@ func (sub Submission) SourceCodePage() (link string, err error) {
 // Set 'pageCount' to the maximum number of pages (50 rows per page) you want to be scraped.
 // If 'pageCount' > 1, channel will not wait until all verdicts are declared, and will
 // close once submission data from all specified pages are extracted.
-func (arg Args) GetSubmissions(handle string, pageCount int) (<-chan []Submission, error) {
-	if pageCount <= 0 {
-		return nil, nil
-	}
-
+func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submission, error) {
 	link, err := arg.SubmissionsPage(handle)
 	if err != nil {
 		return nil, err
