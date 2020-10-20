@@ -165,6 +165,7 @@ func Parse(str string) (Args, error) {
 			arg := Args{
 				Contest: result["cont"],
 				Problem: result["prob"],
+				Class:   result["class"],
 				Group:   result["group"],
 			}
 			arg.setContestClass()

@@ -124,6 +124,10 @@ func genRandomString(n int) string {
 }
 
 func (arg *Args) setContestClass() {
+	if arg.Class != "" {
+		return
+	}
+
 	val, err := strconv.Atoi(arg.Contest)
 	if len(arg.Group) == 10 {
 		arg.Class = ClassGroup
