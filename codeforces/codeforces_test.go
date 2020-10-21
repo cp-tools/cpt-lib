@@ -8,30 +8,22 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// setup headless browser to use
-	_, mode := os.LookupEnv("LOCAL_MODE")
+	Start(false, "../user-data-dir", "google-chrome")
 
-	Start(!mode, "../user-data-dir", "google-chrome",
-		[]string{"blink-settings", "imagesEnabled=false"})
-
-	if !mode {
-		// setup login access to use
-		usr := os.Getenv("CODEFORCES_USERNAME")
-		passwd := os.Getenv("CODEFORCES_PASSWORD")
-		_, err := login(usr, passwd)
-		if err != nil {
-			fmt.Println("Login failed:", err)
-			Browser.Close()
-			os.Exit(1)
-		}
+	// setup login access to use
+	usr := os.Getenv("CODEFORCES_USERNAME")
+	passwd := os.Getenv("CODEFORCES_PASSWORD")
+	_, err := login(usr, passwd)
+	if err != nil {
+		fmt.Println("Login failed:", err)
+		Browser.Close()
+		os.Exit(1)
 	}
 
 	exitCode := m.Run()
 
 	// logout current user
-	if !mode {
-		logout()
-	}
+	logout()
 
 	Browser.Close()
 	os.Exit(exitCode)
