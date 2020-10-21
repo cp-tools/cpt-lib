@@ -418,6 +418,8 @@ func TestArgs_GetProblems(t *testing.T) {
 }
 
 func TestArgs_SubmitSolution(t *testing.T) {
+	t.SkipNow() // Keep this on hold until reqd.
+
 	sFile, _ := ioutil.TempFile(os.TempDir(), "cpt-submission")
 	defer os.Remove(sFile.Name())
 	sFile.WriteString(genRandomString(30))
