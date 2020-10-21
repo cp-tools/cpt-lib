@@ -92,11 +92,12 @@ func TestArgs_GetSubmissions(t *testing.T) {
 		count  uint
 	}
 	tests := []struct {
-		name    string
-		arg     Args
-		args    args
-		want    []Submission
-		wantErr bool
+		name       string
+		arg        Args
+		args       args
+		want       []Submission
+		wantErr    bool
+		shouldSkip bool
 	}{
 		{
 			name: "Test #1",
@@ -174,6 +175,14 @@ func TestArgs_GetSubmissions(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name:       "Test #3",
+			arg:        Args{"5", "", "contest", ""},
+			args:       args{"cp-tools", 2},
+			want:       nil, // Being skipped.
+			wantErr:    false,
+			shouldSkip: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -185,13 +194,30 @@ func TestArgs_GetSubmissions(t *testing.T) {
 			}
 
 			// read till channel closes
-			val := make([]Submission, 0)
+			submissions := make([]Submission, 0)
 			for v := range got {
-				val = append(val, v...)
+				submissions = append(submissions, v...)
 			}
 
-			if !reflect.DeepEqual(val, tt.want) {
-				t.Errorf("Args.GetSubmissions() = %v, want %v", val, tt.want)
+			if tt.shouldSkip {
+				// Check for duplicates.
+				tmpMap := make(map[Submission]bool)
+				for _, submission := range submissions {
+					tmpMap[submission] = true
+				}
+
+				if len(tmpMap) != len(submissions) {
+					t.Errorf("Args.GetSubmissions() returned duplicate values")
+				}
+				if uint(len(submissions)) != 100 { // There should be exactly this many.
+					t.Errorf("Args.GetSubmissions() required = 100 rows, got %v rows", len(submissions))
+				}
+				// All fine.
+				t.SkipNow()
+			}
+
+			if !reflect.DeepEqual(submissions, tt.want) {
+				t.Errorf("Args.GetSubmissions() = %v, want %v", submissions, tt.want)
 			}
 		})
 	}
