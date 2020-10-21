@@ -349,7 +349,7 @@ func TestArgs_GetContests(t *testing.T) {
 		{
 			name:       "Test #4",
 			arg:        Args{"", "", "gym", ""},
-			args:       args{1},
+			args:       args{4},
 			want:       nil, // Being skipped.
 			wantErr:    false,
 			shouldSkip: true,
@@ -385,6 +385,10 @@ func TestArgs_GetContests(t *testing.T) {
 
 				if len(tmpMap) != len(contests) {
 					t.Errorf("Args.GetContests() returned duplicate values")
+				}
+				if uint(len(contests)) < 100*tt.args.pageCount {
+					t.Errorf("Args.GetContests() required >= %v rows, got %v rows",
+						100*tt.args.pageCount, len(contests))
 				}
 				// No duplicates found.
 				t.SkipNow()
