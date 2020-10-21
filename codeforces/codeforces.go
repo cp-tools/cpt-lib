@@ -2,6 +2,7 @@ package codeforces
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -42,13 +43,7 @@ var (
 )
 
 // Start initiates the headless browser to use.
-func Start(headless bool, userDataDir, bin string, flags ...[]string) error {
-	// Add flags to launcher.
-	addFlags := func(l *launcher.Launcher) {
-		for _, flag := range flags {
-			l.Set(flag[0], flag[1:]...)
-		}
-	}
+func Start(headless bool, userDataDir, bin string) error {
 	// Launch browser.
 	launchBrowser := func(controlURL string) (*rod.Browser, error) {
 		b := rod.New().ControlURL(controlURL)
@@ -63,7 +58,6 @@ func Start(headless bool, userDataDir, bin string, flags ...[]string) error {
 		UserDataDir(userDataDir).
 		Headless(true).
 		Bin(bin)
-	addFlags(cookiesl)
 
 	cookiesControlURL, err := cookiesl.Launch()
 	if err != nil {
@@ -76,12 +70,15 @@ func Start(headless bool, userDataDir, bin string, flags ...[]string) error {
 	}
 	defer cookiesBrowser.Close()
 
+	// Store data in cache (to reduce time).
+	cacheDir, _ := os.UserCacheDir()
+	cacheUserDataDir := filepath.Join(cacheDir, "cp-tools", "cpt-lib", bin)
+
 	// Initiate the browser to use.
 	l := launcher.New().
-		UserDataDir(filepath.Join(userDataDir, "cpt-lib")).
+		UserDataDir(cacheUserDataDir).
 		Headless(headless).
 		Bin(bin)
-	addFlags(l)
 
 	controlURL, err := l.Launch()
 	if err != nil {
