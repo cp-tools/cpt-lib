@@ -371,18 +371,27 @@ func TestArgs_GetContests(t *testing.T) {
 				return
 			}
 
-			val := make([]Contest, 0)
+			contests := make([]Contest, 0)
 			for v := range got {
-				val = append(val, v...)
+				contests = append(contests, v...)
 			}
 
 			if tt.shouldSkip {
-				// Log values and skip.
-				t.Skip(val)
+				// Check if there are duplicates.
+				tmpMap := make(map[Args]bool)
+				for _, contest := range contests {
+					tmpMap[contest.Arg] = true
+				}
+
+				if len(tmpMap) != len(contests) {
+					t.Errorf("Args.GetContests() returned duplicate values")
+				}
+				// No duplicates found.
+				t.SkipNow()
 			}
 
-			if !reflect.DeepEqual(val, tt.want) {
-				t.Errorf("Args.GetContests() = %v, want %v", val, tt.want)
+			if !reflect.DeepEqual(contests, tt.want) {
+				t.Errorf("Args.GetContests() = %v, want %v", contests, tt.want)
 			}
 		})
 	}
