@@ -8,7 +8,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	Start(false, "../user-data-dir", "google-chrome")
+	Start(true, "../user-data-dir", "google-chrome")
 
 	// setup login access to use
 	usr := os.Getenv("CODEFORCES_USERNAME")
