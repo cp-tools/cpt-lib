@@ -132,6 +132,8 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 				// click navigation button and wait till loads
 				elm := page.MustElementR(".pagination li a", "→")
 				elm.MustClick().WaitInvisible()
+				// Wait till submission data rows are loaded.
+				page.MustElement(`tr[data-submission-id]`)
 			}
 		}
 	}()

@@ -328,6 +328,8 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 			// click navigation button and wait elm is removed from view.
 			elm := page.MustElementR(`.pagination li a`, "→")
 			elm.MustClick().WaitInvisible()
+			// Wait till contest data rows are loaded.
+			page.MustElement(`tr[data-contestid]`)
 		}
 	}()
 	return chanContests, nil
