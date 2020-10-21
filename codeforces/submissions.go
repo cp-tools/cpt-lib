@@ -24,58 +24,63 @@ type (
 	}
 )
 
-// SubmissionsPage returns link to user submissions
+// SubmissionsPage returns link to user submissions in contest.
 func (arg Args) SubmissionsPage(handle string) (link string, err error) {
-	// contest specified
-	if arg.Contest != "" {
-		if arg.Class == ClassGroup {
-			// groups are not supported.
-			return "", ErrInvalidSpecifier
-		}
-
-		if arg.Class == "" || arg.Contest == "" {
-			return "", ErrInvalidSpecifier
-		}
-
+	// Contest not specified.
+	if arg.Contest == "" {
 		if handle == "" {
-			link = fmt.Sprintf("%v/%v/%v/my",
-				hostURL, arg.Class, arg.Contest)
-		} else {
-			link = fmt.Sprintf("%v/submissions/%v/%v/%v",
-				hostURL, handle, arg.Class, arg.Contest)
-		}
-
-	} else {
-		if handle == "" {
-			tmpHandle, err := login("", "")
-			if err != nil {
-				return "", err
+			// Extract handle from homepage.
+			// No actual login is done in below code.
+			var err error
+			if handle, err = login("", ""); err != nil {
+				return "", ErrInvalidSpecifier
 			}
-			handle = tmpHandle
 		}
 
-		link = fmt.Sprintf("%v/submissions/%v",
-			hostURL, handle)
+		link = fmt.Sprintf("%v/submissions/%v", hostURL, handle)
+		return
 	}
+
+	switch arg.Class {
+	case ClassGroup:
+		if handle != "" {
+			// Fetching others submissions not possible.
+			return "", ErrInvalidSpecifier
+		}
+
+		link = fmt.Sprintf("%v/group/%v/contest/%v/my", hostURL, arg.Group, arg.Contest)
+
+	case ClassContest, ClassGym:
+		if handle == "" {
+			link = fmt.Sprintf("%v/%v/%v/my", hostURL, arg.Class, arg.Contest)
+		} else {
+			link = fmt.Sprintf("%v/submissions/%v/%v/%v", hostURL, handle, arg.Class, arg.Contest)
+		}
+
+	default:
+		return "", ErrInvalidSpecifier
+	}
+
 	return
 }
 
 // SourceCodePage returns link to solution submission
 func (sub Submission) SourceCodePage() (link string, err error) {
-	arg := sub.Arg // becomes too long to type otherwise...
-
-	if (arg.Class != ClassContest && arg.Class != ClassGym && arg.Class != ClassGroup) ||
-		arg.Contest == "" || sub.ID == "" {
+	if sub.ID == "" {
 		return "", ErrInvalidSpecifier
 	}
 
-	if arg.Class == ClassGroup {
-		link = fmt.Sprintf("%v/group/%v/contest/%v/submission/%v",
-			hostURL, arg.Group, arg.Contest, sub.ID)
-	} else {
-		link = fmt.Sprintf("%v/%v/%v/submission/%v",
-			hostURL, arg.Class, arg.Contest, sub.ID)
+	switch sub.Arg.Class {
+	case ClassGroup:
+		link = fmt.Sprintf("%v/group/%v/contest/%v/submission/%v", hostURL, sub.Arg.Group, sub.Arg.Contest, sub.ID)
+
+	case ClassContest, ClassGym:
+		link = fmt.Sprintf("%v/%v/%v/submission/%v", hostURL, sub.Arg.Class, sub.Arg.Contest, sub.ID)
+
+	default:
+		return "", ErrInvalidSpecifier
 	}
+
 	return
 }
 
