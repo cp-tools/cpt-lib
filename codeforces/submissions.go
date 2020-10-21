@@ -104,7 +104,7 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 	// @todo Add support for excluding unofficial submissions
 
 	// create buffered channel for submissions
-	chanSubmissions := make(chan []Submission, 500)
+	chanSubmissions := make(chan []Submission, 10)
 	go func() {
 		defer page.Close()
 		defer close(chanSubmissions)

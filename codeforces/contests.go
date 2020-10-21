@@ -176,7 +176,8 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 // on specified data in Args. Expects arg.Class to be configured
 // to fetch respective contest details.
 //
-// Set 'pageCount' to the maximum number of pages (50 rows in each page)
+// Set 'pageCount' to the maximum number of pages (100 rows in each page,
+// excluding the first page, which may contain more rows of upcoming contests)
 // you want to be returned.
 func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 	link, err := arg.ContestsPage()
@@ -191,7 +192,7 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 		return nil, fmt.Errorf(msg)
 	}
 
-	chanContests := make(chan []Contest, 250)
+	chanContests := make(chan []Contest, 5)
 	go func() {
 		defer page.Close()
 		defer close(chanContests)
