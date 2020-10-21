@@ -53,21 +53,25 @@ const (
 
 // CountdownPage returns link to countdown in contest
 func (arg Args) CountdownPage() (link string, err error) {
-	if arg.Class == ClassGroup {
-		if arg.Group == "" || arg.Contest == "" {
-			return "", ErrInvalidSpecifier
-		}
-
-		link = fmt.Sprintf("%v/group/%v/contest/%v/countdown",
-			hostURL, arg.Group, arg.Contest)
-	} else {
-		if arg.Class == "" || arg.Contest == "" {
-			return "", ErrInvalidSpecifier
-		}
-
-		link = fmt.Sprintf("%v/%v/%v/countdown",
-			hostURL, arg.Class, arg.Contest)
+	if arg.Contest == "" {
+		return "", ErrInvalidSpecifier
 	}
+
+	switch arg.Class {
+	case ClassGroup:
+		if arg.Group == "" {
+			return "", ErrInvalidSpecifier
+		}
+
+		link = fmt.Sprintf("%v/group/%v/contest/%v/countdown", hostURL, arg.Group, arg.Contest)
+
+	case ClassContest, ClassGym:
+		link = fmt.Sprintf("%v/%v/%v/countdown", hostURL, arg.Class, arg.Contest)
+
+	default:
+		return "", ErrInvalidSpecifier
+	}
+
 	return
 }
 
@@ -109,21 +113,25 @@ func (arg Args) ContestsPage() (link string, err error) {
 
 // DashboardPage returns link to dashboard of contest
 func (arg Args) DashboardPage() (link string, err error) {
-	if arg.Class == ClassGroup {
-		if arg.Group == "" || arg.Contest == "" {
-			return "", ErrInvalidSpecifier
-		}
-
-		link = fmt.Sprintf("%v/group/%v/contest/%v",
-			hostURL, arg.Group, arg.Contest)
-	} else {
-		if arg.Class == "" || arg.Contest == "" {
-			return "", ErrInvalidSpecifier
-		}
-
-		link = fmt.Sprintf("%v/%v/%v",
-			hostURL, arg.Class, arg.Contest)
+	if arg.Contest == "" {
+		return "", ErrInvalidSpecifier
 	}
+
+	switch arg.Class {
+	case ClassGroup:
+		if arg.Group == "" {
+			return "", ErrInvalidSpecifier
+		}
+
+		link = fmt.Sprintf("%v/group/%v/contest/%v", hostURL, arg.Group, arg.Contest)
+
+	case ClassContest, ClassGym:
+		link = fmt.Sprintf("%v/%v/%v", hostURL, arg.Class, arg.Contest)
+
+	default:
+		return "", ErrInvalidSpecifier
+	}
+
 	return
 }
 

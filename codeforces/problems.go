@@ -39,40 +39,33 @@ const (
 
 // ProblemsPage returns link to problem(s) page in contest
 func (arg Args) ProblemsPage() (link string, err error) {
-	// problem specified
-	if arg.Problem != "" {
-		if arg.Class == ClassGroup {
-			if arg.Group == "" || arg.Contest == "" {
-				return "", ErrInvalidSpecifier
-			}
-
-			link = fmt.Sprintf("%v/group/%v/contest/%v/problem/%v",
-				hostURL, arg.Group, arg.Contest, arg.Problem)
-		} else {
-			if arg.Contest == "" || (arg.Class != ClassContest && arg.Class != ClassGym) {
-				return "", ErrInvalidSpecifier
-			}
-
-			link = fmt.Sprintf("%v/%v/%v/problem/%v",
-				hostURL, arg.Class, arg.Contest, arg.Problem)
-		}
-	} else {
-		if arg.Class == ClassGroup {
-			if arg.Group == "" || arg.Contest == "" {
-				return "", ErrInvalidSpecifier
-			}
-
-			link = fmt.Sprintf("%v/group/%v/contest/%v/problems",
-				hostURL, arg.Group, arg.Contest)
-		} else {
-			if arg.Class == "" || arg.Contest == "" {
-				return "", ErrInvalidSpecifier
-			}
-
-			link = fmt.Sprintf("%v/%v/%v/problems",
-				hostURL, arg.Class, arg.Contest)
-		}
+	if arg.Contest == "" {
+		return "", ErrInvalidSpecifier
 	}
+
+	switch arg.Class {
+	case ClassGroup:
+		if arg.Group == "" {
+			return "", ErrInvalidSpecifier
+		}
+
+		if arg.Problem == "" {
+			link = fmt.Sprintf("%v/group/%v/contest/%v/problems", hostURL, arg.Group, arg.Contest)
+		} else {
+			link = fmt.Sprintf("%v/group/%v/contest/%v/problem/%v", hostURL, arg.Group, arg.Contest, arg.Problem)
+		}
+
+	case ClassContest, ClassGym:
+		if arg.Problem == "" {
+			link = fmt.Sprintf("%v/%v/%v/problems", hostURL, arg.Class, arg.Contest)
+		} else {
+			link = fmt.Sprintf("%v/%v/%v/problem/%v", hostURL, arg.Class, arg.Contest, arg.Problem)
+		}
+
+	default:
+		return "", ErrInvalidSpecifier
+	}
+
 	return
 }
 
