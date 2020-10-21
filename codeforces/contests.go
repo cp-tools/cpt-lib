@@ -197,13 +197,13 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 		defer close(chanContests)
 
 		// parse contests from current page
-		parseFunc := func(parseUpcoming bool) []Contest {
+		parseFunc := func(parseFirstTable bool) []Contest {
 			contests := make([]Contest, 0)
 
 			doc := processHTML(page)
 			// WARNING! ugly code present below. View with caution.
 			table := doc.Selection
-			if parseUpcoming == false {
+			if parseFirstTable == false {
 				// exclude upcoming contests table
 				table = doc.Find(".datatable").Eq(1)
 			}
@@ -229,8 +229,7 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 				contestRow.Arg = contArg
 
 				// the table format for contests is different from groups and gyms/contests.
-				if (contArg.Class == ClassGym && contArg.Contest != "") ||
-					(contArg.Class == ClassContest) {
+				if (arg.Class == ClassGym && arg.Contest != "") || (arg.Class == ClassContest) {
 					row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
 						switch cellIdx {
 						case 0:
@@ -316,18 +315,20 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 		}
 
 		// iterate till no more valid pages left
-		for isFirst := true; pageCount > 0; pageCount-- {
-			contests := parseFunc(isFirst)
+		for isFirstPage := true; pageCount > 0; pageCount-- {
+			contests := parseFunc(isFirstPage || (arg.Class != ClassContest))
 			chanContests <- contests
-			isFirst = false
+			isFirstPage = false
 
-			if !page.MustHasR(".pagination li", "→") || pageCount == 0 {
+			if !page.MustHasR(".pagination li", "→") || pageCount == 1 {
 				// no more pages to parse
 				break
 			}
-			// click navigation button and wait till loads
+			// Select one row data and wait till its not present.
+			elm := page.MustElement(`tr[data-contestid]`)
+			// click navigation button and wait elm is removed from view.
 			page.MustElementR(".pagination li", "→").MustClick()
-			page.Element(`tr[data-contestid]`)
+			elm.WaitInvisible()
 		}
 	}()
 	return chanContests, nil

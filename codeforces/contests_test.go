@@ -224,11 +224,12 @@ func TestArgs_GetContests(t *testing.T) {
 		pageCount uint
 	}
 	tests := []struct {
-		name    string
-		arg     Args
-		args    args
-		want    []Contest
-		wantErr bool
+		name       string
+		arg        Args
+		args       args
+		want       []Contest
+		wantErr    bool
+		shouldSkip bool
 	}{
 		{
 			name: "Test #1",
@@ -345,6 +346,22 @@ func TestArgs_GetContests(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name:       "Test #4",
+			arg:        Args{"", "", "gym", ""},
+			args:       args{1},
+			want:       nil, // Being skipped.
+			wantErr:    false,
+			shouldSkip: true,
+		},
+		{
+			name:       "Test #5",
+			arg:        Args{"", "", "contest", ""},
+			args:       args{2},
+			want:       nil, // Being skipped.
+			wantErr:    false,
+			shouldSkip: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -357,6 +374,11 @@ func TestArgs_GetContests(t *testing.T) {
 			val := make([]Contest, 0)
 			for v := range got {
 				val = append(val, v...)
+			}
+
+			if tt.shouldSkip {
+				// Log values and skip.
+				t.Skip(val)
 			}
 
 			if !reflect.DeepEqual(val, tt.want) {
