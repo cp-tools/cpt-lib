@@ -9,6 +9,8 @@ on:
     paths:
       - 'codeforces/*'
 
+  workflow_dispatch:
+
 jobs:
   test:
     name: Test
