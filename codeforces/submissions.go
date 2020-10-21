@@ -125,13 +125,13 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 				submissions, _ := arg.parseSubmissions(page)
 				chanSubmissions <- submissions
 
-				if !page.MustHasR(".pagination li", "→") || pageCount == 0 {
+				if !page.MustHasR(".pagination li a", "→") || pageCount < 2 {
 					// no more pages to parse
 					break
 				}
 				// click navigation button and wait till loads
-				page.MustElementR(".pagination li", "→").MustClick()
-				page.Element(`tr[data-submission-id]`)
+				elm := page.MustElementR(".pagination li a", "→")
+				elm.MustClick().MustWaitInvisible()
 			}
 		}
 	}()

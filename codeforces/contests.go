@@ -320,15 +320,13 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 			chanContests <- contests
 			isFirstPage = false
 
-			if !page.MustHasR(".pagination li", "→") || pageCount == 1 {
+			if !page.MustHasR(".pagination li a", "→") || pageCount < 2 {
 				// no more pages to parse
 				break
 			}
-			// Select one row data and wait till its not present.
-			elm := page.MustElement(`tr[data-contestid]`)
 			// click navigation button and wait elm is removed from view.
-			page.MustElementR(".pagination li", "→").MustClick()
-			elm.WaitInvisible()
+			elm := page.MustElementR(`.pagination li a`, "→")
+			elm.MustClick().MustWaitInvisible()
 		}
 	}()
 	return chanContests, nil

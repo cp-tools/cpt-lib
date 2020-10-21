@@ -27,6 +27,7 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string) {
 	router.MustAdd("*", func(h *rod.Hijack) {
 		if h.Request.Type() == proto.NetworkResourceTypeImage ||
 			h.Request.Type() == proto.NetworkResourceTypeFont ||
+			h.Request.Type() == proto.NetworkResourceTypeStylesheet ||
 			h.Request.Type() == proto.NetworkResourceTypeMedia {
 			h.Response.Fail(proto.NetworkErrorReasonBlockedByClient)
 			return
