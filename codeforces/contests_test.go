@@ -373,6 +373,7 @@ func TestArgs_GetContests(t *testing.T) {
 
 			contests := make([]Contest, 0)
 			for v := range got {
+				t.Log("Data rows in page:", len(v))
 				contests = append(contests, v...)
 			}
 

@@ -196,6 +196,7 @@ func TestArgs_GetSubmissions(t *testing.T) {
 			// read till channel closes
 			submissions := make([]Submission, 0)
 			for v := range got {
+				t.Log("Data rows in page:", len(v))
 				submissions = append(submissions, v...)
 			}
 
