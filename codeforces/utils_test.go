@@ -27,13 +27,23 @@ func Test_parseTime(t *testing.T) {
 		},
 		{
 			name: "Test #3", // Russian locale.
-			args: args{"23.10.2020 15:35 UTC-2.0"},
+			args: args{"23.10.2020 15:35 UTC-02.0"},
 			want: time.Date(2020, time.October, 23, 17, 35, 0, 0, time.UTC),
 		},
 		{
 			name: "Test #4", // Russian locale.
 			args: args{"23.10.2020 15:35"},
 			want: time.Date(2020, time.October, 23, 15, 35, 0, 0, time.UTC),
+		},
+		{
+			name: "Test #5",
+			args: args{"Inv/20/2020 20:05 UTC+00.0"},
+			want: time.Unix(0, 0).UTC(),
+		},
+		{
+			name: "Test #6",
+			args: args{"Oct/20/2020 20:05 UTC+3.5"},
+			want: time.Date(2020, time.October, 20, 16, 35, 0, 0, time.UTC),
 		},
 	}
 	for _, tt := range tests {
