@@ -253,6 +253,11 @@ func TestArgs_GetSubmissions(t *testing.T) {
 				return
 			}
 
+			if err != nil {
+				// No data is returned; continue.
+				return
+			}
+
 			// read till channel closes
 			submissions := make([]Submission, 0)
 			for v := range got {
