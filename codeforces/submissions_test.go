@@ -370,6 +370,12 @@ int main() {
 			want:    "",
 			wantErr: true,
 		},
+		{
+			name:    "Test #4",
+			sub:     Submission{ID: "12345678", Arg: Args{"4", "b", "contest", ""}},
+			want:    "",
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
