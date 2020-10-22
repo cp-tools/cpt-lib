@@ -25,7 +25,9 @@ func TestMain(m *testing.M) {
 	// logout current user
 	logout()
 
+	os.RemoveAll("../user-data-dir")
 	Browser.Close()
+
 	os.Exit(exitCode)
 }
 
