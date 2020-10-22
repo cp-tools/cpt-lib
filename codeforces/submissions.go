@@ -127,6 +127,8 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		} else {
 			// iterate till no more valid required pages left
 			for ; pageCount > 0; pageCount-- {
+				page.WaitLoad()
+
 				submissions, _ := arg.parseSubmissions(page)
 				chanSubmissions <- submissions
 
@@ -137,7 +139,6 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 				// click navigation button and wait till loads
 				elm := page.MustElementR(".pagination li a", "→")
 				elm.MustClick().WaitInvisible()
-				// Wait till submission data rows are loaded.
 				page.MustElement(`tr[data-submission-id]`)
 			}
 		}
