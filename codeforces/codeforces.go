@@ -53,23 +53,6 @@ func Start(headless bool, userDataDir, bin string) error {
 		return b, nil
 	}
 
-	// Initiate browser to extract cookies from.
-	cookiesl := launcher.NewUserMode().
-		UserDataDir(userDataDir).
-		Headless(true).
-		Bin(bin)
-
-	cookiesControlURL, err := cookiesl.Launch()
-	if err != nil {
-		return err
-	}
-
-	cookiesBrowser, err := launchBrowser(cookiesControlURL)
-	if err != nil {
-		return err
-	}
-	defer cookiesBrowser.Close()
-
 	// Store data in cache (to reduce time).
 	cacheDir, _ := os.UserCacheDir()
 	cacheUserDataDir := filepath.Join(cacheDir, "cp-tools", "cpt-lib", bin)
@@ -90,8 +73,27 @@ func Start(headless bool, userDataDir, bin string) error {
 		return err
 	}
 
-	// Copy cookies of user.
-	Browser.MustSetCookies(cookiesBrowser.MustGetCookies())
+	// Load temporary browser to extract cookies only if path exists.
+	if file, err := os.Stat(userDataDir); err == nil && file.IsDir() {
+		// Initiate browser to extract cookies from.
+		cookiesl := launcher.NewUserMode().
+			UserDataDir(userDataDir).
+			Headless(true).
+			Bin(bin)
+
+		cookiesControlURL, err := cookiesl.Launch()
+		if err != nil {
+			return err
+		}
+
+		cookiesBrowser, err := launchBrowser(cookiesControlURL)
+		if err != nil {
+			return err
+		}
+		defer cookiesBrowser.Close()
+		// Copy cookies of user.
+		Browser.MustSetCookies(cookiesBrowser.MustGetCookies())
+	}
 
 	return nil
 }
