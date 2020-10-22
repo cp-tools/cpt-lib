@@ -325,6 +325,8 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 
 		// iterate till no more valid pages left
 		for isFirstPage := true; pageCount > 0; pageCount-- {
+			page.WaitLoad()
+
 			contests := parseFunc(isFirstPage || (arg.Class != ClassContest))
 			chanContests <- contests
 			isFirstPage = false
@@ -336,7 +338,6 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 			// click navigation button and wait elm is removed from view.
 			elm := page.MustElementR(`.pagination li a`, "→")
 			elm.MustClick().WaitInvisible()
-			// Wait till contest data rows are loaded.
 			page.MustElement(`tr[data-contestid]`)
 		}
 	}()
