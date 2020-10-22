@@ -2,6 +2,8 @@ package codeforces
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -41,26 +43,74 @@ var (
 )
 
 // Start initiates the headless browser to use.
-func Start(headless bool, userDataDir, bin string, flags ...[]string) {
-	l := launcher.New().UserDataDir(userDataDir).
-		Headless(headless).Bin(bin)
-	for _, flag := range flags {
-		l.Set(flag[0], flag[1:]...)
+func Start(headless bool, userDataDir, bin string) error {
+	// Launch browser.
+	launchBrowser := func(controlURL string) (*rod.Browser, error) {
+		b := rod.New().ControlURL(controlURL)
+		if err := b.Connect(); err != nil {
+			return nil, err
+		}
+		return b, nil
 	}
-	Browser = rod.New().ControlURL(l.MustLaunch()).MustConnect()
+
+	// Store data in cache (to reduce time).
+	cacheDir, _ := os.UserCacheDir()
+	cacheUserDataDir := filepath.Join(cacheDir, "cp-tools", "cpt-lib", bin)
+
+	// Initiate the browser to use.
+	l := launcher.New().
+		UserDataDir(cacheUserDataDir).
+		Headless(headless).
+		Bin(bin)
+
+	controlURL, err := l.Launch()
+	if err != nil {
+		return err
+	}
+
+	Browser, err = launchBrowser(controlURL)
+	if err != nil {
+		return err
+	}
+
+	// Load temporary browser to extract cookies only if path exists.
+	if file, err := os.Stat(userDataDir); err == nil && file.IsDir() {
+		// Initiate browser to extract cookies from.
+		cookiesl := launcher.NewUserMode().
+			UserDataDir(userDataDir).
+			Headless(true).
+			Bin(bin)
+
+		cookiesControlURL, err := cookiesl.Launch()
+		if err != nil {
+			return err
+		}
+
+		cookiesBrowser, err := launchBrowser(cookiesControlURL)
+		if err != nil {
+			return err
+		}
+		defer cookiesBrowser.Close()
+		// Copy cookies of user.
+		Browser.MustSetCookies(cookiesBrowser.MustGetCookies())
+	}
+
+	return nil
 }
 
-func (arg Args) String() string {
-	// 201468 c1 (group/Qvv4lz52cT)
-	// 1234 (contest)
-	// 100522 f1 (gym)
+func (arg Args) String() (str string) {
+	if arg == (Args{}) {
+		return ""
+	}
 
-	var str string
-	if arg.Group != "" {
+	switch arg.Class {
+	case ClassGroup:
 		str = fmt.Sprintf("%v %v (%v/%v)", arg.Contest, arg.Problem, arg.Class, arg.Group)
-	} else {
+
+	case ClassContest, ClassGym:
 		str = fmt.Sprintf("%v %v (%v)", arg.Contest, arg.Problem, arg.Class)
 	}
+
 	return strings.Join(strings.Fields(str), " ")
 }
 
@@ -71,14 +121,11 @@ func loginPage() string {
 
 // Parse passed in specifier string to new Args struct.
 // Validates parsed args and returns error if any.
-//
-// List of valid specifiers can be viewed at
-// github.com/cp-tools/codeforces/wiki.
 func Parse(str string) (Args, error) {
 	var (
 		rxCont  = `(?P<cont>\d+)`
 		rxProb  = `(?P<prob>[A-Za-z][1-9]?)`
-		rxClass = `(?P<class>contest|gym|group|problemset)`
+		rxClass = `(?P<class>contest|gym|group)`
 		rxGroup = `(?P<group>\w{10})`
 
 		valRx = []string{
@@ -86,23 +133,20 @@ func Parse(str string) (Args, error) {
 			`codeforces.com\/` + rxClass + `\/` + rxCont + `\/problem\/` + rxProb + `$`,
 			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + `contest` + `\/` + rxCont + `$`,
 			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + `contest` + `\/` + rxCont + `\/problem\/` + rxProb + `$`,
-			`codeforces.com\/` + rxClass + `\/problem\/` + rxCont + `\/` + rxProb + `$`,
+			`codeforces.com\/problemset\/problem\/` + rxCont + `\/` + rxProb + `$`,
+
+			`^\s*` + rxClass + `$`,
+			`^\s*` + rxGroup + `$`,
 
 			`^\s*` + rxCont + `$`,
 			`^\s*` + rxCont + `\s*` + rxProb + `$`,
 			`^\s*` + rxGroup + `\s*` + rxCont + `$`,
 			`^\s*` + rxGroup + `\s*` + rxCont + `\s*` + rxProb + `$`,
-
-			// for local folders parsing
-			`^\s*` + rxClass + `\s*` + rxCont + `$`,
-			`^\s*` + rxClass + `\s*` + rxCont + `\s*` + rxProb + `$`,
-			`^\s*` + rxClass + `\s*` + rxGroup + `\s*` + rxCont + `$`,
-			`^\s*` + rxClass + `\s*` + rxGroup + `\s*` + rxCont + `\s*` + rxProb + `$`,
 		}
 	)
 
 	str = strings.TrimSpace(str)
-	if len(str) == 0 {
+	if str == "" {
 		return Args{}, nil
 	}
 
@@ -113,7 +157,7 @@ func Parse(str string) (Args, error) {
 			match := re.FindStringSubmatch(str)
 			result := map[string]string{}
 			for i, name := range re.SubexpNames() {
-				if i != 0 && len(name) > 0 {
+				if i != 0 && name != "" {
 					result[name] = match[i]
 				}
 			}
@@ -122,6 +166,7 @@ func Parse(str string) (Args, error) {
 			arg := Args{
 				Contest: result["cont"],
 				Problem: result["prob"],
+				Class:   result["class"],
 				Group:   result["group"],
 			}
 			arg.setContestClass()
@@ -143,10 +188,7 @@ func Parse(str string) (Args, error) {
 // has expiry period of one month from date of last login.
 func login(usr, passwd string) (string, error) {
 	link := loginPage()
-	page, msg, err := loadPage(link, selCSSFooter)
-	if err != nil {
-		return "", err
-	}
+	page, msg := loadPage(link, selCSSFooter)
 	defer page.Close()
 
 	if msg != "" {
@@ -158,8 +200,13 @@ func login(usr, passwd string) (string, error) {
 	if elm := page.MustElements(selCSSHandle).First(); elm != nil {
 		return clean(elm.MustText()), nil
 	}
-
 	// otherwise, login
+
+	// check if username/password are valid
+	if usr == "" || passwd == "" {
+		return "", errInvalidCredentials
+	}
+
 	page.MustElement("#handleOrEmail").Input(usr)
 	page.MustElement("#password").Input(passwd)
 	if page.MustElement("#remember").MustProperty("checked").Bool() == false {
@@ -176,18 +223,15 @@ func login(usr, passwd string) (string, error) {
 }
 
 func logout() error {
-	page, msg, err := loadPage(hostURL, selCSSFooter)
-	if err != nil {
-		return err
-	}
+	page, msg := loadPage(hostURL, selCSSFooter)
 	defer page.Close()
 
 	if msg != "" {
 		return fmt.Errorf(msg)
 	}
 
-	if page.MustHasMatches("a", "Logout") {
-		page.MustElementMatches("a", "Logout").MustClick()
+	if page.MustHasR("a", "Logout") {
+		page.MustElementR("a", "Logout").MustClick()
 		// page gives a notification on logout
 		page.Element(selCSSNotif)
 	}

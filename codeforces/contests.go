@@ -52,48 +52,95 @@ const (
 )
 
 // CountdownPage returns link to countdown in contest
-func (arg Args) CountdownPage() (link string) {
-	if arg.Class == ClassGroup {
-		link = fmt.Sprintf("%v/group/%v/contest/%v/countdown",
-			hostURL, arg.Group, arg.Contest)
-	} else {
-		link = fmt.Sprintf("%v/%v/%v/countdown",
-			hostURL, arg.Class, arg.Contest)
+func (arg Args) CountdownPage() (link string, err error) {
+	if arg.Contest == "" {
+		return "", ErrInvalidSpecifier
 	}
+
+	switch arg.Class {
+	case ClassGroup:
+		if arg.Group == "" {
+			return "", ErrInvalidSpecifier
+		}
+
+		link = fmt.Sprintf("%v/group/%v/contest/%v/countdown", hostURL, arg.Group, arg.Contest)
+
+	case ClassContest, ClassGym:
+		link = fmt.Sprintf("%v/%v/%v/countdown", hostURL, arg.Class, arg.Contest)
+
+	default:
+		return "", ErrInvalidSpecifier
+	}
+
 	return
 }
 
 // ContestsPage returns link to all contests page (group/gym/contest)
-func (arg Args) ContestsPage() (link string) {
-	if arg.Class == ClassGroup {
+func (arg Args) ContestsPage() (link string, err error) {
+
+	switch arg.Class {
+	case ClassGroup:
+		if arg.Group == "" {
+			return "", ErrInvalidSpecifier
+		}
+
 		// details of individual contest can't be parsed.
 		// fallback to parsing all contests in group.
-		link = fmt.Sprintf("%v/group/%v/contests?complete=true",
-			hostURL, arg.Group)
-	} else if len(arg.Contest) != 0 {
-		link = fmt.Sprintf("%v/contests/%v",
-			hostURL, arg.Contest)
-	} else {
-		link = fmt.Sprintf("%v/%vs?complete=true",
-			hostURL, arg.Class)
+		link = fmt.Sprintf("%v/group/%v/contests?complete=true", hostURL, arg.Group)
+
+	case ClassContest:
+		if arg.Contest == "" {
+			link = fmt.Sprintf("%v/contests?complete=true", hostURL)
+			return
+		}
+
+		link = fmt.Sprintf("%v/contests/%v", hostURL, arg.Contest)
+
+	case ClassGym:
+		if arg.Contest == "" {
+			link = fmt.Sprintf("%v/gyms?complete=true", hostURL)
+			return
+		}
+
+		link = fmt.Sprintf("%v/contests/%v", hostURL, arg.Contest)
+
+	default:
+		return "", ErrInvalidSpecifier
 	}
+
 	return
 }
 
 // DashboardPage returns link to dashboard of contest
-func (arg Args) DashboardPage() (link string) {
-	if arg.Class == ClassGroup {
-		link = fmt.Sprintf("%v/group/%v/contest/%v",
-			hostURL, arg.Group, arg.Contest)
-	} else {
-		link = fmt.Sprintf("%v/%v/%v",
-			hostURL, arg.Class, arg.Contest)
+func (arg Args) DashboardPage() (link string, err error) {
+	if arg.Contest == "" {
+		return "", ErrInvalidSpecifier
 	}
+
+	switch arg.Class {
+	case ClassGroup:
+		if arg.Group == "" {
+			return "", ErrInvalidSpecifier
+		}
+
+		link = fmt.Sprintf("%v/group/%v/contest/%v", hostURL, arg.Group, arg.Contest)
+
+	case ClassContest, ClassGym:
+		link = fmt.Sprintf("%v/%v/%v", hostURL, arg.Class, arg.Contest)
+
+	default:
+		return "", ErrInvalidSpecifier
+	}
+
 	return
 }
 
-// RegisterPage returns link to registration (nor virtual reg) in contest
-func (arg Args) RegisterPage() (link string) {
+// RegisterPage returns link to registration (not virtual reg) in contest
+func (arg Args) RegisterPage() (link string, err error) {
+	if arg.Contest == "" || arg.Class != ClassContest {
+		return "", ErrInvalidSpecifier
+	}
+
 	// gyms/groups don't support registration, do they!?
 	link = fmt.Sprintf("%v/contestRegistration/%v",
 		hostURL, arg.Contest)
@@ -102,20 +149,18 @@ func (arg Args) RegisterPage() (link string) {
 
 // GetCountdown parses and returns duration type for countdown
 // in specified contest to end. If countdown has already ended,
-// returns 0. Extracts data from .../contest/<contest>/countdown.
+// returns 0.
 func (arg Args) GetCountdown() (time.Duration, error) {
 	// chan has not been implemented here since,
 	// countdown is updated on reload,
 	// and is not websocket based.
-	if len(arg.Contest) == 0 {
-		return 0, ErrInvalidSpecifier
-	}
 
-	link := arg.CountdownPage()
-	page, msg, err := loadPage(link, selCSSFooter)
+	link, err := arg.CountdownPage()
 	if err != nil {
 		return 0, err
 	}
+
+	page, msg := loadPage(link, selCSSFooter)
 	defer page.Close()
 
 	if msg != "" {
@@ -139,42 +184,35 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 // on specified data in Args. Expects arg.Class to be configured
 // to fetch respective contest details.
 //
-// Set 'pageCount' to the maximum number of pages (50 rows in each page)
-// you want to be returned. Set to -1 if you want to fetch all pages.
-func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
-	// MUST define Class type.
-	if arg.Class != ClassGym && arg.Class != ClassGroup && arg.Class != ClassContest {
-		return nil, ErrInvalidSpecifier
-	}
-
-	if pageCount < 0 {
-		// is this large enough?
-		pageCount = 1e9
-	}
-
-	link := arg.ContestsPage()
-	page, msg, err := loadPage(link, `tr[data-contestid]`)
+// Set 'pageCount' to the maximum number of pages (100 rows in each page,
+// excluding the first page, which may contain more rows of upcoming contests)
+// you want to be returned.
+func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
+	link, err := arg.ContestsPage()
 	if err != nil {
 		return nil, err
 	}
 
+	page, msg := loadPage(link, `tr[data-contestid]`)
+
 	if msg != "" {
+		defer page.Close()
 		return nil, fmt.Errorf(msg)
 	}
 
-	chanContests := make(chan []Contest, 250)
+	chanContests := make(chan []Contest, 5)
 	go func() {
 		defer page.Close()
 		defer close(chanContests)
 
 		// parse contests from current page
-		parseFunc := func(parseUpcoming bool) []Contest {
+		parseFunc := func(parseFirstTable bool) []Contest {
 			contests := make([]Contest, 0)
 
 			doc := processHTML(page)
 			// WARNING! ugly code present below. View with caution.
 			table := doc.Selection
-			if parseUpcoming == false {
+			if parseFirstTable == false {
 				// exclude upcoming contests table
 				table = doc.Find(".datatable").Eq(1)
 			}
@@ -200,8 +238,7 @@ func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
 				contestRow.Arg = contArg
 
 				// the table format for contests is different from groups and gyms/contests.
-				if (contArg.Class == ClassGym && contArg.Contest != "") ||
-					(contArg.Class == ClassContest) {
+				if (arg.Class == ClassGym && arg.Contest != "") || (arg.Class == ClassContest) {
 					row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
 						switch cellIdx {
 						case 0:
@@ -287,18 +324,21 @@ func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
 		}
 
 		// iterate till no more valid pages left
-		for isFirst := true; pageCount > 0; pageCount-- {
-			contests := parseFunc(isFirst)
-			chanContests <- contests
-			isFirst = false
+		for isFirstPage := true; pageCount > 0; pageCount-- {
+			page.WaitLoad()
 
-			if !page.MustHasMatches(".pagination li", "→") || pageCount == 0 {
+			contests := parseFunc(isFirstPage || (arg.Class != ClassContest))
+			chanContests <- contests
+			isFirstPage = false
+
+			if !page.MustHasR(".pagination li a", "→") || pageCount < 2 {
 				// no more pages to parse
 				break
 			}
-			// click navigation button and wait till loads
-			page.MustElementMatches(".pagination li", "→").MustClick()
-			page.Element(`tr[data-contestid]`)
+			// click navigation button and wait elm is removed from view.
+			elm := page.MustElementR(`.pagination li a`, "→")
+			elm.MustClick().WaitInvisible()
+			page.MustElement(`tr[data-contestid]`)
 		}
 	}()
 	return chanContests, nil
@@ -307,15 +347,13 @@ func (arg Args) GetContests(pageCount int) (<-chan []Contest, error) {
 // GetDashboard parses and returns useful info from
 // contest dashboard page.
 func (arg Args) GetDashboard() (Dashboard, error) {
-	if len(arg.Contest) == 0 {
-		return Dashboard{}, ErrInvalidSpecifier
-	}
 
-	link := arg.DashboardPage()
-	page, msg, err := loadPage(link, selCSSFooter)
+	link, err := arg.DashboardPage()
 	if err != nil {
 		return Dashboard{}, err
 	}
+
+	page, msg := loadPage(link, selCSSFooter)
 	defer page.Close()
 
 	if msg != "" {
@@ -373,8 +411,8 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 					problemRow.InpStream = "standard input"
 					problemRow.OutStream = "standard output"
 				} else {
-					problemRow.InpStream = strings.Split(sval, "/")[0]
-					problemRow.OutStream = strings.Split(sval, "/")[1]
+					problemRow.InpStream = clean(strings.Split(sval, "/")[0])
+					problemRow.OutStream = clean(strings.Split(sval, "/")[1])
 				}
 
 				name := cell.Find("a").Text()
@@ -407,16 +445,13 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 // Provides callback method to register current user session
 // in contest. If registration was successful, returns nil error.
 func (arg Args) RegisterForContest() (*RegisterInfo, error) {
-	// ONLY contests support registration
-	if arg.Class != ClassContest || len(arg.Contest) == 0 {
-		return nil, ErrInvalidSpecifier
-	}
 
-	link := arg.RegisterPage()
-	page, msg, err := loadPage(link, selCSSFooter)
+	link, err := arg.RegisterPage()
 	if err != nil {
 		return nil, err
 	}
+
+	page, msg := loadPage(link, selCSSFooter)
 
 	if msg != "" {
 		return nil, fmt.Errorf(msg)
@@ -430,7 +465,7 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 		Register: func() error {
 			page.MustElement(".submit").MustClick()
 			page.Element(`.contestList`)
-			defer page.Close()
+			page.Close()
 			return nil
 		},
 	}

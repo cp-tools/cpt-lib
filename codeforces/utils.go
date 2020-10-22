@@ -10,6 +10,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
 )
 
 var (
@@ -19,18 +20,37 @@ var (
 	selCSSError  = `.error`
 )
 
-func loadPage(link string, selMatch string) (*rod.Page, string, error) {
-	page, err := Browser.Page(link)
-	if err != nil {
-		return nil, "", err
+func loadPage(link string, selMatch ...string) (*rod.Page, string) {
+	page := Browser.MustPage(link)
+	// Disable CSS and Img in webpage.
+	router := page.HijackRequests()
+	router.MustAdd("*", func(h *rod.Hijack) {
+		if h.Request.Type() == proto.NetworkResourceTypeImage ||
+			h.Request.Type() == proto.NetworkResourceTypeFont ||
+			h.Request.Type() == proto.NetworkResourceTypeStylesheet ||
+			h.Request.Type() == proto.NetworkResourceTypeMedia {
+			h.Response.Fail(proto.NetworkErrorReasonBlockedByClient)
+			return
+		}
+		h.ContinueRequest(&proto.FetchContinueRequest{})
+	})
+	go router.Run()
+
+	selMatch = append([]string{selCSSNotif}, selMatch...)
+	elm := page.MustElement(selMatch...)
+
+	if page.MustInfo().URL != link {
+		page.WaitLoad()
+		if page.MustHas(selCSSNotif) {
+			// There was a redirect (with an error message).
+			elm = page.MustElement(selCSSNotif)
+		}
 	}
 
-	// footer is loaded last ig? I'm not sure
-	elm := page.MustElement(selCSSNotif, selMatch)
 	if elm.MustMatches(selCSSNotif) {
-		return page, clean(elm.MustText()), nil
+		return page, clean(elm.MustText())
 	}
-	return page, "", nil
+	return page, ""
 }
 
 func processHTML(page *rod.Page) *goquery.Document {
@@ -69,10 +89,22 @@ func getAttr(sel *goquery.Selection, query, attr string) string {
 // if the time string is invalid, returns time corresponding to
 // the start of time => (1 Jan 1970 00:00)
 func parseTime(link string) time.Time {
-	re := regexp.MustCompile(`([A-Za-z]+)\/(\d+)\/(\d+) (\d+):(\d+)`)
+	// Follows english locale format: Mon/dd/yyyy hh:mm +MM:mm
+	re := regexp.MustCompile(`([A-Za-z]{3})\/(\d{2})\/(\d{4}) (\d+):(\d+)`)
 	pst := re.FindAllStringSubmatch(link, -1)
 	if pst == nil || len(pst[0]) < 6 {
-		return time.Unix(0, 0).UTC()
+		// Try the russian locale format: dd.mm.yyyy hh:mm +MM:mm
+		re = regexp.MustCompile(`(\d{2})\.(\d{2})\.(\d{4}) (\d+):(\d+)`)
+		pst = re.FindAllStringSubmatch(link, -1)
+		if pst == nil || len(pst[0]) < 6 {
+			// Formats didn't match. Mostly invalid.
+			return time.Unix(0, 0).UTC()
+		}
+		// Convert month int to short string name.
+		mm, _ := strconv.Atoi(pst[0][2])
+		mon := time.Month(mm).String()[:3]
+		// Rearrange pst values to match english locale.
+		pst[0][2], pst[0][1] = pst[0][1], mon
 	}
 
 	// set values
@@ -88,7 +120,9 @@ func parseTime(link string) time.Time {
 		val = fmt.Sprintf("%v +00:00", val)
 	} else {
 		pOffset, pMajor, pMinor := pst[0][1], pst[0][2], pst[0][3]
-		pMajor = fmt.Sprintf("0%v", pMajor)[:2]
+		pMajor = fmt.Sprintf("0%v", pMajor)
+		pMajor = pMajor[len(pMajor)-2:]
+
 		if pMinor == "5" {
 			pMinor = "30"
 		}
@@ -113,6 +147,10 @@ func genRandomString(n int) string {
 }
 
 func (arg *Args) setContestClass() {
+	if arg.Class != "" {
+		return
+	}
+
 	val, err := strconv.Atoi(arg.Contest)
 	if len(arg.Group) == 10 {
 		arg.Class = ClassGroup

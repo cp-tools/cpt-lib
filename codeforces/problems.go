@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -37,25 +38,34 @@ const (
 )
 
 // ProblemsPage returns link to problem(s) page in contest
-func (arg Args) ProblemsPage() (link string) {
-	// problem specified
-	if len(arg.Problem) != 0 {
-		if arg.Class == ClassGroup {
-			link = fmt.Sprintf("%v/group/%v/contest/%v/problem/%v",
-				hostURL, arg.Group, arg.Contest, arg.Problem)
-		} else {
-			link = fmt.Sprintf("%v/%v/%v/problem/%v",
-				hostURL, arg.Class, arg.Contest, arg.Problem)
-		}
-	} else {
-		if arg.Class == ClassGroup {
-			link = fmt.Sprintf("%v/group/%v/contest/%v/problems",
-				hostURL, arg.Group, arg.Contest)
-		} else {
-			link = fmt.Sprintf("%v/%v/%v/problems",
-				hostURL, arg.Class, arg.Contest)
-		}
+func (arg Args) ProblemsPage() (link string, err error) {
+	if arg.Contest == "" {
+		return "", ErrInvalidSpecifier
 	}
+
+	switch arg.Class {
+	case ClassGroup:
+		if arg.Group == "" {
+			return "", ErrInvalidSpecifier
+		}
+
+		if arg.Problem == "" {
+			link = fmt.Sprintf("%v/group/%v/contest/%v/problems", hostURL, arg.Group, arg.Contest)
+		} else {
+			link = fmt.Sprintf("%v/group/%v/contest/%v/problem/%v", hostURL, arg.Group, arg.Contest, arg.Problem)
+		}
+
+	case ClassContest, ClassGym:
+		if arg.Problem == "" {
+			link = fmt.Sprintf("%v/%v/%v/problems", hostURL, arg.Class, arg.Contest)
+		} else {
+			link = fmt.Sprintf("%v/%v/%v/problem/%v", hostURL, arg.Class, arg.Contest, arg.Problem)
+		}
+
+	default:
+		return "", ErrInvalidSpecifier
+	}
+
 	return
 }
 
@@ -70,15 +80,13 @@ func (arg Args) ProblemsPage() (link string) {
 // Doesn't fetch 'SolveStatus' and 'SolveCount' of problem.
 // Use GetDashboard() to fetch these info fields.
 func (arg Args) GetProblems() ([]Problem, error) {
-	if len(arg.Contest) == 0 {
-		return nil, ErrInvalidSpecifier
-	}
 
-	link := arg.ProblemsPage()
-	page, msg, err := loadPage(link, `.problemindexholder`)
+	link, err := arg.ProblemsPage()
 	if err != nil {
 		return nil, err
 	}
+
+	page, msg := loadPage(link, `.problemindexholder`)
 	defer page.Close()
 
 	if msg != "" {
@@ -121,43 +129,53 @@ func (arg Args) GetProblems() ([]Problem, error) {
 
 // SubmitSolution submits source code to specifed problem.
 // langName is codeforces specified name of language to submit in.
-// file is the submissions file to upload on the form.
+// file is the submission code file to upload.
 //
-// If submission completed successfully, returns nil error.
-func (arg Args) SubmitSolution(langName string, file string) error {
+// If submitted successfully, returns a chan updating verdict
+// of the current submission. View GetSubmissions() for more details.
+func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission, error) {
 	// problem not specifed, return invalid
-	if len(arg.Contest) == 0 || len(arg.Problem) == 0 {
-		return ErrInvalidSpecifier
+	if arg.Problem == "" {
+		return nil, ErrInvalidSpecifier
 	}
 
 	if _, ok := LanguageID[langName]; !ok {
-		return fmt.Errorf("Invalid language")
+		return nil, fmt.Errorf("Invalid language")
 	}
 
 	// check if given file exists
 	if fl, err := os.Stat(file); os.IsNotExist(err) || fl.IsDir() {
-		return fmt.Errorf("Invalid file path")
+		return nil, fmt.Errorf("Invalid file path")
 	}
 
-	link := arg.ProblemsPage()
-	page, msg, err := loadPage(link, `input[name="sourceFile"]`)
+	link, err := arg.ProblemsPage()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer page.Close()
 
+	page, msg := loadPage(link, selCSSFooter)
 	if msg != "" {
-		return fmt.Errorf(msg)
+		defer page.Close()
+		return nil, fmt.Errorf(msg)
 	}
 
 	// check if user is logged in
 	if !page.MustHas(selCSSHandle) {
-		return fmt.Errorf("No logged in session present")
+		defer page.Close()
+		return nil, fmt.Errorf("No logged in session present")
+	}
+
+	// check if submitting is possible at all.
+	if !page.MustHas(`input.submit`) {
+		defer page.Close()
+		return nil, fmt.Errorf("Problem not open for submission")
 	}
 
 	// check if specified language can be selected
-	if !page.MustHasMatches(`select>option[value]`, regexp.QuoteMeta(langName)) {
-		return fmt.Errorf("Language not supported")
+	// if this is allowed, so is submitting.
+	if !page.MustHasR(`select>option[value]`, regexp.QuoteMeta(langName)) {
+		defer page.Close()
+		return nil, fmt.Errorf("Language not allowed in problem")
 	}
 
 	// do the submitting here! (really simple)
@@ -169,8 +187,26 @@ func (arg Args) SubmitSolution(langName string, file string) error {
 
 	if elm.MustMatches(selCSSError) {
 		// static error message (exact submission done before)
+		defer page.Close()
 		msg := clean(elm.MustText())
-		return fmt.Errorf(msg)
+		return nil, fmt.Errorf(msg)
 	}
-	return nil
+
+	// return live progress of submission
+	chanSubmission := make(chan Submission, 500)
+	go func() {
+		defer page.Close()
+		defer close(chanSubmission)
+
+		for true {
+			submissions, _ := arg.parseSubmissions(page)
+			chanSubmission <- submissions[0]
+			if submissions[0].IsJudging == false {
+				break
+			}
+			time.Sleep(time.Millisecond * 350)
+		}
+	}()
+
+	return chanSubmission, nil
 }
