@@ -50,6 +50,24 @@ func TestArgs_problemsPage(t *testing.T) {
 			want:    "https://codeforces.com/group/bK73bvp3d7/contest/283855/problem/c",
 			wantErr: false,
 		},
+		{
+			name:    "Test #7",
+			arg:     Args{},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "Test #8",
+			arg:     Args{"283855", "", "group", ""},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "Test #9",
+			arg:     Args{"45", "d", "invalid", ""},
+			want:    "",
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -382,7 +400,13 @@ func TestArgs_GetProblems(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Test #6",
+			name:    "Test #6",
+			arg:     Args{"543", "d1", "invalid", ""},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "Test #7",
 			arg:  Args{"277493", "t", "group", "MEqF8b6wBT"},
 			want: []Problem{
 				{
@@ -401,6 +425,12 @@ func TestArgs_GetProblems(t *testing.T) {
 				},
 			},
 			wantErr: false,
+		},
+		{
+			name:    "Test #8",
+			arg:     Args{"12345", "", "contest", ""},
+			want:    nil,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -439,7 +469,43 @@ func TestArgs_SubmitSolution(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "Test #2",
+			name:    "Test #3", // Invalid args.
+			arg:     Args{"55", "", "contest", ""},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
+			wantErr: true,
+		},
+		{
+			name:    "Test #4", // Invalid language.
+			arg:     Args{"5", "a", "contest", ""},
+			args:    args{"Invalid Language", sFile.Name()},
+			wantErr: true,
+		},
+		{
+			name:    "Test #5", // Invalid file.
+			arg:     Args{"5", "a", "contest", ""},
+			args:    args{"GNU G++17 7.3.0", "invalid-file.cpp"},
+			wantErr: true,
+		},
+		{
+			name:    "Test #6", // Invalid args.
+			arg:     Args{"45", "d", "invalid", ""},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
+			wantErr: true,
+		},
+		{
+			name:    "Test #7", // Invalid contest.
+			arg:     Args{"12345", "d", "contest", ""},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
+			wantErr: true,
+		},
+		{
+			name:    "Test #8", // Language can't be used.
+			arg:     Args{"1346", "a", "contest", ""},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
+			wantErr: true,
+		},
+		{
+			name:    "Test #2", // Same submission error.
 			arg:     Args{"5", "a", "contest", ""},
 			args:    args{"GNU G++17 7.3.0", sFile.Name()},
 			wantErr: true,
