@@ -222,6 +222,11 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 				parseDuration := func(str string) time.Duration {
 					re := regexp.MustCompile(`(?:(\d+):)?(\d+):(\d+)`)
 					val := re.FindStringSubmatch(str)
+					if len(val) < 4 {
+						fmt.Println("Regex fail:", re.String(), "data:", str)
+						return 0
+					}
+
 					d, _ := strconv.Atoi(val[1])
 					h, _ := strconv.Atoi(val[2])
 					m, _ := strconv.Atoi(val[3])
@@ -325,7 +330,9 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 
 		// iterate till no more valid pages left
 		for isFirstPage := true; pageCount > 0; pageCount-- {
+			fmt.Println("Entered:", pageCount)
 			contests := parseFunc(isFirstPage || (arg.Class != ClassContest))
+			fmt.Println("Exited:", pageCount)
 			chanContests <- contests
 			isFirstPage = false
 
