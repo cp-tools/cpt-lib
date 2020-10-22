@@ -145,3 +145,54 @@ func TestParse(t *testing.T) {
 		})
 	}
 }
+
+func TestArgs_String(t *testing.T) {
+	tests := []struct {
+		name string
+		arg  Args
+		want string
+	}{
+		{
+			name: "Test #1",
+			arg:  Args{"1234", "", "contest", ""},
+			want: "1234 (contest)",
+		},
+		{
+			name: "Test #2",
+			arg:  Args{"1234", "b", "contest", ""},
+			want: "1234 b (contest)",
+		},
+		{
+			name: "Test #3",
+			arg:  Args{"100522", "", "gym", ""},
+			want: "100522 (gym)",
+		},
+		{
+			name: "Test #4",
+			arg:  Args{"100522", "f1", "gym", ""},
+			want: "100522 f1 (gym)",
+		},
+		{
+			name: "Test #5",
+			arg:  Args{"201468", "", "group", "Qvv4lz52cT"},
+			want: "201468 (group/Qvv4lz52cT)",
+		},
+		{
+			name: "Test #6",
+			arg:  Args{"201468", "c1", "group", "Qvv4lz52cT"},
+			want: "201468 c1 (group/Qvv4lz52cT)",
+		},
+		{
+			name: "Test #7",
+			arg:  Args{},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.arg.String(); got != tt.want {
+				t.Errorf("Args.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

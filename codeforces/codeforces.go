@@ -96,17 +96,19 @@ func Start(headless bool, userDataDir, bin string) error {
 	return nil
 }
 
-func (arg Args) String() string {
-	// 201468 c1 (group/Qvv4lz52cT)
-	// 1234 (contest)
-	// 100522 f1 (gym)
+func (arg Args) String() (str string) {
+	if arg == (Args{}) {
+		return ""
+	}
 
-	var str string
-	if arg.Group != "" {
+	switch arg.Class {
+	case ClassGroup:
 		str = fmt.Sprintf("%v %v (%v/%v)", arg.Contest, arg.Problem, arg.Class, arg.Group)
-	} else {
+
+	case ClassContest, ClassGym:
 		str = fmt.Sprintf("%v %v (%v)", arg.Contest, arg.Problem, arg.Class)
 	}
+
 	return strings.Join(strings.Fields(str), " ")
 }
 
