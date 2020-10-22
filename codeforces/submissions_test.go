@@ -243,6 +243,13 @@ func TestArgs_GetSubmissions(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 		},
+		{
+			name:    "Test #5",
+			arg:     Args{"12345", "", "contest", ""},
+			args:    args{"cp-tools", 1},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
