@@ -35,7 +35,7 @@ jobs:
           ${{ runner.os }}-go-
 
     - name: Test
-      run: go test -v -run "GetContests|GetSubmissions" ./codeforces
+      run: go test -v -coverprofile=coverage.out ./codeforces
       env:
         CODEFORCES_USERNAME: cp-tools
         CODEFORCES_PASSWORD: ${{ secrets.CODEFORCES_PASSWORD }}
