@@ -424,14 +424,7 @@ func TestArgs_GetContests(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "Test #7",
-			arg:     Args{"12345", "", "contest", ""},
-			args:    args{1},
-			want:    nil,
-			wantErr: true,
-		},
-		{
-			name: "Test #8",
+			name: "Test #7",
 			arg:  Args{"207982", "", "group", "7rY4CfQSjd"},
 			args: args{10},
 			want: []Contest{
@@ -447,6 +440,13 @@ func TestArgs_GetContests(t *testing.T) {
 				},
 			},
 			wantErr: false,
+		},
+		{
+			name:    "Test #8",
+			arg:     Args{"12345", "", "contest", ""},
+			args:    args{1},
+			want:    nil,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
