@@ -68,7 +68,7 @@ func TestArgs_submissionsPage(t *testing.T) {
 			name:    "Test #7",
 			arg:     Args{"965", "", "contest", ""},
 			args:    args{""},
-			want:    "https://codeforces.com/contest/207982/my",
+			want:    "https://codeforces.com/contest/965/my",
 			wantErr: false,
 		},
 		{
