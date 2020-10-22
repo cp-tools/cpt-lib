@@ -131,6 +131,18 @@ func TestParse(t *testing.T) {
 			want:    Args{"1433", "e", "contest", ""},
 			wantErr: false,
 		},
+		{
+			name:    "Test #16",
+			args:    args{""},
+			want:    Args{},
+			wantErr: false,
+		},
+		{
+			name:    "Test #17",
+			args:    args{"randomBullshitGoGo"},
+			want:    Args{},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
