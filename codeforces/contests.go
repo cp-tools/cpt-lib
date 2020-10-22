@@ -137,7 +137,7 @@ func (arg Args) DashboardPage() (link string, err error) {
 
 // RegisterPage returns link to registration (not virtual reg) in contest
 func (arg Args) RegisterPage() (link string, err error) {
-	if arg.Contest == "" || arg.Class == ClassGroup || arg.Class == ClassGym {
+	if arg.Contest == "" || arg.Class != ClassContest {
 		return "", ErrInvalidSpecifier
 	}
 

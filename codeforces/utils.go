@@ -38,6 +38,15 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string) {
 
 	selMatch = append([]string{selCSSNotif}, selMatch...)
 	elm := page.MustElement(selMatch...)
+
+	if page.MustInfo().URL != link {
+		page.WaitLoad()
+		if page.MustHas(selCSSNotif) {
+			// There was a redirect (with an error message).
+			elm = page.MustElement(selCSSNotif)
+		}
+	}
+
 	if elm.MustMatches(selCSSNotif) {
 		return page, clean(elm.MustText())
 	}

@@ -431,7 +431,7 @@ func TestArgs_GetContests(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Test #3",
+			name: "Test #8",
 			arg:  Args{"207982", "", "group", "7rY4CfQSjd"},
 			args: args{10},
 			want: []Contest{
