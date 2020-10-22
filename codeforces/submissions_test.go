@@ -43,6 +43,41 @@ func TestArgs_submissionsPage(t *testing.T) {
 			want:    "https://codeforces.com/submissions/cp-tools/gym/102595",
 			wantErr: false,
 		},
+		{
+			name:    "Test #4",
+			arg:     Args{},
+			args:    args{""},
+			want:    "https://codeforces.com/submissions/cp-tools",
+			wantErr: false,
+		},
+		{
+			name:    "Test #5",
+			arg:     Args{"207982", "", "group", "7rY4CfQSjd"},
+			args:    args{"invalid"},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "Test #6",
+			arg:     Args{"207982", "", "group", "7rY4CfQSjd"},
+			args:    args{""},
+			want:    "https://codeforces.com/group/7rY4CfQSjd/contest/207982/my",
+			wantErr: false,
+		},
+		{
+			name:    "Test #7",
+			arg:     Args{"965", "", "contest", ""},
+			args:    args{""},
+			want:    "https://codeforces.com/contest/207982/my",
+			wantErr: false,
+		},
+		{
+			name:    "Test #8",
+			arg:     Args{"50", "", "randomBullshitGoGo", ""},
+			args:    args{"cp-tools"},
+			want:    "",
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -70,6 +105,24 @@ func TestSubmission_sourceCodePage(t *testing.T) {
 			sub:     Submission{ID: "81011111", Arg: Args{"4", "", "contest", ""}}, // rest is not required
 			want:    "https://codeforces.com/contest/4/submission/81011111",
 			wantErr: false,
+		},
+		{
+			name:    "Test #2",
+			sub:     Submission{},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "Test #3",
+			sub:     Submission{ID: "95913201", Arg: Args{"207982", "", "group", "7rY4CfQSjd"}},
+			want:    "https://codeforces.com/group/7rY4CfQSjd/contest/207982/submission/95913201",
+			wantErr: false,
+		},
+		{
+			name:    "Test #4",
+			sub:     Submission{ID: "1234567", Arg: Args{"4", "", "invalid", ""}},
+			want:    "",
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -183,6 +236,13 @@ func TestArgs_GetSubmissions(t *testing.T) {
 			wantErr:    false,
 			shouldSkip: true,
 		},
+		{
+			name:    "Test #4",
+			arg:     Args{"207982", "", "group", "7rY4CfQSjd"},
+			args:    args{"invalid", 1},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -265,7 +325,7 @@ puts x<0||s>a[1].inject(:+) ?:NO:"YES
 			wantErr: false,
 		},
 		{
-			name: "Test #1",
+			name: "Test #2",
 			sub:  Submission{ID: "95913201", Arg: Args{"1359", "", "contest", ""}}, // just bare info here
 			want: `//go corona go
 #include <bits/stdc++.h>
@@ -298,6 +358,12 @@ int main() {
 	cout<<m<<endl;
 }`,
 			wantErr: false,
+		},
+		{
+			name:    "Test #3",
+			sub:     Submission{},
+			want:    "",
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
