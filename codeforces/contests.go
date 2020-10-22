@@ -411,8 +411,8 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 					problemRow.InpStream = "standard input"
 					problemRow.OutStream = "standard output"
 				} else {
-					problemRow.InpStream = strings.Split(sval, "/")[0]
-					problemRow.OutStream = strings.Split(sval, "/")[1]
+					problemRow.InpStream = clean(strings.Split(sval, "/")[0])
+					problemRow.OutStream = clean(strings.Split(sval, "/")[1])
 				}
 
 				name := cell.Find("a").Text()
