@@ -120,7 +120,9 @@ func parseTime(link string) time.Time {
 		val = fmt.Sprintf("%v +00:00", val)
 	} else {
 		pOffset, pMajor, pMinor := pst[0][1], pst[0][2], pst[0][3]
-		pMajor = fmt.Sprintf("0%v", pMajor)[:2]
+		pMajor = fmt.Sprintf("0%v", pMajor)
+		pMajor = pMajor[len(pMajor)-2:]
+
 		if pMinor == "5" {
 			pMinor = "30"
 		}
