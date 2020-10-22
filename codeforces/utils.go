@@ -89,6 +89,9 @@ func getAttr(sel *goquery.Selection, query, attr string) string {
 // if the time string is invalid, returns time corresponding to
 // the start of time => (1 Jan 1970 00:00)
 func parseTime(link string) time.Time {
+	// Prepare for data extraction (strip all extra whitespace).
+	link = strings.ReplaceAll(clean(link), "\n", " ")
+
 	// Follows english locale format: Mon/dd/yyyy hh:mm +MM:mm
 	re := regexp.MustCompile(`([A-Za-z]{3})\/(\d{2})\/(\d{4}) (\d+):(\d+)`)
 	pst := re.FindAllStringSubmatch(link, -1)
