@@ -89,10 +89,22 @@ func getAttr(sel *goquery.Selection, query, attr string) string {
 // if the time string is invalid, returns time corresponding to
 // the start of time => (1 Jan 1970 00:00)
 func parseTime(link string) time.Time {
-	re := regexp.MustCompile(`([A-Za-z]+)\/(\d+)\/(\d+) (\d+):(\d+)`)
+	// Follows english locale format: Mon/dd/yyyy hh:mm +MM:mm
+	re := regexp.MustCompile(`([A-Za-z]{3})\/(\d{2})\/(\d{4}) (\d+):(\d+)`)
 	pst := re.FindAllStringSubmatch(link, -1)
 	if pst == nil || len(pst[0]) < 6 {
-		return time.Unix(0, 0).UTC()
+		// Try the russian locale format: dd.mm.yyyy hh:mm +MM:mm
+		re = regexp.MustCompile(`(\d{2})\.(\d{2})\.(\d{4}) (\d+):(\d+)`)
+		pst = re.FindAllStringSubmatch(link, -1)
+		if pst == nil || len(pst[0]) < 6 {
+			// Formats didn't match. Mostly invalid.
+			return time.Unix(0, 0).UTC()
+		}
+		// Convert month int to short string name.
+		mm, _ := strconv.Atoi(pst[0][2])
+		mon := time.Month(mm).String()[:3]
+		// Rearrange pst values to match english locale.
+		pst[0][2], pst[0][1] = pst[0][1], mon
 	}
 
 	// set values
