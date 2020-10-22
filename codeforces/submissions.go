@@ -66,7 +66,7 @@ func (arg Args) SubmissionsPage(handle string) (link string, err error) {
 
 // SourceCodePage returns link to solution submission
 func (sub Submission) SourceCodePage() (link string, err error) {
-	if sub.ID == "" {
+	if sub.ID == "" || sub.Arg.Contest == "" {
 		return "", ErrInvalidSpecifier
 	}
 
