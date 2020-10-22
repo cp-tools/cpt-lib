@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/go-rod/rod/lib/proto"
 )
 
 type (
@@ -328,15 +329,12 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 			return contests
 		}
 
-		// Wait till last element in page is loaded.
-		// Must change this to something better.
-		page.MustElement(`#colorbox`)
-
 		// iterate till no more valid pages left
 		for isFirstPage := true; pageCount > 0; pageCount-- {
-			fmt.Println("Entered:", pageCount)
+			// Wait till pagination loaded.
+			page.WaitNavigation(proto.PageLifecycleEventNameNetworkAlmostIdle)
+
 			contests := parseFunc(isFirstPage || (arg.Class != ClassContest))
-			fmt.Println("Exited:", pageCount)
 			chanContests <- contests
 			isFirstPage = false
 
@@ -347,6 +345,7 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 			// click navigation button and wait elm is removed from view.
 			elm := page.MustElementR(`.pagination li a`, "→")
 			elm.MustClick().WaitInvisible()
+			page.MustElement(`tr[data-contestid]`)
 		}
 	}()
 	return chanContests, nil

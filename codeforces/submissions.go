@@ -6,6 +6,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
 )
 
 type (
@@ -114,10 +115,6 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		defer page.Close()
 		defer close(chanSubmissions)
 
-		// Wait till last element in page is loaded.
-		// Must change this to something better.
-		page.MustElement(`#colorbox`)
-
 		if pageCount == 1 {
 			// loop till 'isDone' is true
 			for true {
@@ -131,6 +128,9 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		} else {
 			// iterate till no more valid required pages left
 			for ; pageCount > 0; pageCount-- {
+				// Wait till pagination loaded.
+				page.WaitNavigation(proto.PageLifecycleEventNameNetworkAlmostIdle)
+
 				submissions, _ := arg.parseSubmissions(page)
 				chanSubmissions <- submissions
 
@@ -141,6 +141,7 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 				// click navigation button and wait till loads
 				elm := page.MustElementR(".pagination li a", "→")
 				elm.MustClick().WaitInvisible()
+				page.MustElement(`tr[data-submission-id]`)
 			}
 		}
 	}()
