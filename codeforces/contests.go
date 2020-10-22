@@ -328,6 +328,10 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 			return contests
 		}
 
+		// Wait till last element in page is loaded.
+		// Must change this to something better.
+		page.MustElement(`#colorbox`)
+
 		// iterate till no more valid pages left
 		for isFirstPage := true; pageCount > 0; pageCount-- {
 			fmt.Println("Entered:", pageCount)
@@ -343,9 +347,6 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 			// click navigation button and wait elm is removed from view.
 			elm := page.MustElementR(`.pagination li a`, "→")
 			elm.MustClick().WaitInvisible()
-			// Wait till last element in page is loaded.
-			// Must change this to something better.
-			page.MustElement(`#colorbox`)
 		}
 	}()
 	return chanContests, nil
