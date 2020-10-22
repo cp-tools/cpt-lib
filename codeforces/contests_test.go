@@ -457,6 +457,11 @@ func TestArgs_GetContests(t *testing.T) {
 				return
 			}
 
+			if err != nil {
+				// No data is returned; continue.
+				return
+			}
+
 			contests := make([]Contest, 0)
 			for v := range got {
 				t.Log("Data rows in page:", len(v))
