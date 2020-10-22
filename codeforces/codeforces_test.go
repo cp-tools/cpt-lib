@@ -13,8 +13,7 @@ func TestMain(m *testing.M) {
 	// setup login access to use
 	usr := os.Getenv("CODEFORCES_USERNAME")
 	passwd := os.Getenv("CODEFORCES_PASSWORD")
-	_, err := login(usr, passwd)
-	if err != nil {
+	if _, err := login(usr, passwd); err != nil {
 		fmt.Println("Login failed:", err)
 		Browser.Close()
 		os.Exit(1)
@@ -23,7 +22,10 @@ func TestMain(m *testing.M) {
 	exitCode := m.Run()
 
 	// logout current user
-	logout()
+	if err := logout(); err != nil {
+		fmt.Println("Logout failed:", err)
+		exitCode = 1
+	}
 
 	os.RemoveAll("../user-data-dir")
 	Browser.Close()
