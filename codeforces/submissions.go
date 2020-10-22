@@ -6,7 +6,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
 )
 
 type (
@@ -128,8 +127,7 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		} else {
 			// iterate till no more valid required pages left
 			for ; pageCount > 0; pageCount-- {
-				// Wait till pagination loaded.
-				page.WaitNavigation(proto.PageLifecycleEventNameNetworkAlmostIdle)
+				page.WaitLoad()
 
 				submissions, _ := arg.parseSubmissions(page)
 				chanSubmissions <- submissions

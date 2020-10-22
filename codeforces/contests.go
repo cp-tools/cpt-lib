@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/go-rod/rod/lib/proto"
 )
 
 type (
@@ -331,8 +330,7 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 
 		// iterate till no more valid pages left
 		for isFirstPage := true; pageCount > 0; pageCount-- {
-			// Wait till pagination loaded.
-			page.WaitNavigation(proto.PageLifecycleEventNameNetworkAlmostIdle)
+			page.WaitLoad()
 
 			contests := parseFunc(isFirstPage || (arg.Class != ClassContest))
 			chanContests <- contests
