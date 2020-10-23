@@ -99,7 +99,10 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		return nil, err
 	}
 
-	page, msg := loadPage(link, `tr[data-submission-id]`)
+	page, msg, err := loadPage(link, `tr[data-submission-id]`)
+	if err != nil {
+		return nil, err
+	}
 
 	if msg != "" {
 		defer page.Close()
@@ -158,7 +161,10 @@ func (sub Submission) GetSourceCode() (string, error) {
 		return "", err
 	}
 
-	page, msg := loadPage(link, `#program-source-text`)
+	page, msg, err := loadPage(link, `#program-source-text`)
+	if err != nil {
+		return "", err
+	}
 	defer page.Close()
 
 	if msg != "" {

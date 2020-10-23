@@ -188,7 +188,10 @@ func Parse(str string) (Args, error) {
 // has expiry period of one month from date of last login.
 func login(usr, passwd string) (string, error) {
 	link := loginPage()
-	page, msg := loadPage(link, selCSSFooter)
+	page, msg, err := loadPage(link, selCSSFooter)
+	if err != nil {
+		return "", err
+	}
 	defer page.Close()
 
 	if msg != "" {
@@ -223,7 +226,10 @@ func login(usr, passwd string) (string, error) {
 }
 
 func logout() error {
-	page, msg := loadPage(hostURL, selCSSFooter)
+	page, msg, err := loadPage(hostURL, selCSSFooter)
+	if err != nil {
+		return err
+	}
 	defer page.Close()
 
 	if msg != "" {

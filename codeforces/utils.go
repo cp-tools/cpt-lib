@@ -20,8 +20,13 @@ var (
 	selCSSError  = `.error`
 )
 
-func loadPage(link string, selMatch ...string) (*rod.Page, string) {
-	page := Browser.MustPage(link)
+func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
+	// Load page and return error (if any).
+	page, err := Browser.Page(proto.TargetCreateTarget{URL: link})
+	if err != nil {
+		return nil, "", err
+	}
+
 	// Disable CSS and Img in webpage.
 	router := page.HijackRequests()
 	router.MustAdd("*", func(h *rod.Hijack) {
@@ -48,9 +53,9 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string) {
 	}
 
 	if elm.MustMatches(selCSSNotif) {
-		return page, clean(elm.MustText())
+		return page, clean(elm.MustText()), nil
 	}
-	return page, ""
+	return page, "", nil
 }
 
 func processHTML(page *rod.Page) *goquery.Document {
