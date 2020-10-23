@@ -506,51 +506,6 @@ func TestArgs_GetContests(t *testing.T) {
 	}
 }
 
-func TestArgs_RegisterForContest(t *testing.T) {
-	// check if there exists any contests
-	// with open registration available
-	arg := Args{Class: ClassContest}
-	chanContests, err := arg.GetContests(1)
-	if err != nil {
-		t.Errorf("arg.GetContests() error = %v", err)
-	}
-
-	for contests := range chanContests {
-		for _, cont := range contests {
-			if cont.RegStatus != RegistrationOpen {
-				continue
-			}
-
-			// found contest. Try registering in it.
-			regInfo, err := cont.Arg.RegisterForContest()
-			if err != nil {
-				t.Errorf("cont.Arg.RegisterForContest() error = %v", err)
-			}
-
-			err = regInfo.Register()
-			if err != nil {
-				t.Errorf("regInfo.Register() error = %v", err)
-			}
-
-			// check registered status
-			chanCurrContests, err := cont.Arg.GetContests(1)
-			if err != nil {
-				t.Errorf("cont.Arg.GetContests() error = %v", err)
-			}
-
-			for currContests := range chanCurrContests {
-				// check if registered in contest
-				if currContests[0].RegStatus != RegistrationDone {
-					t.Errorf("Registration failed - %v", currContests[0])
-				}
-				t.Logf("Successfully registered in %v", cont)
-			}
-
-			break
-		}
-	}
-}
-
 func TestArgs_GetDashboard(t *testing.T) {
 	tests := []struct {
 		name    string

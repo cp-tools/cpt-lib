@@ -86,7 +86,10 @@ func (arg Args) GetProblems() ([]Problem, error) {
 		return nil, err
 	}
 
-	page, msg := loadPage(link)
+	page, msg, err := loadPage(link)
+	if err != nil {
+		return nil, err
+	}
 	defer page.Close()
 
 	if msg != "" {
@@ -153,7 +156,11 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 		return nil, err
 	}
 
-	page, msg := loadPage(link)
+	page, msg, err := loadPage(link)
+	if err != nil {
+		return nil, err
+	}
+
 	if msg != "" {
 		defer page.Close()
 		return nil, fmt.Errorf(msg)

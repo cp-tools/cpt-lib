@@ -160,7 +160,10 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 		return 0, err
 	}
 
-	page, msg := loadPage(link)
+	page, msg, err := loadPage(link)
+	if err != nil {
+		return 0, err
+  }
 	defer page.Close()
 
 	if msg != "" {
@@ -193,7 +196,10 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 		return nil, err
 	}
 
-	page, msg := loadPage(link)
+	page, msg, err := loadPage(link)
+	if err != nil {
+		return nil, err
+	}
 
 	if msg != "" {
 		defer page.Close()
@@ -351,7 +357,10 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 		return Dashboard{}, err
 	}
 
-	page, msg := loadPage(link)
+	page, msg, err := loadPage(link)
+	if err != nil {
+		return Dashboard{}, err
+	}
 	defer page.Close()
 
 	if msg != "" {
@@ -435,39 +444,4 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 	})
 
 	return dashboard, nil
-}
-
-// RegisterForContest parses and returns registration terms
-// of contest specified in args.
-//
-// Provides callback method to register current user session
-// in contest. If registration was successful, returns nil error.
-func (arg Args) RegisterForContest() (*RegisterInfo, error) {
-
-	link, err := arg.RegisterPage()
-	if err != nil {
-		return nil, err
-	}
-
-	page, msg := loadPage(link)
-
-	if msg != "" {
-		return nil, fmt.Errorf(msg)
-	}
-
-	doc := processHTML(page)
-
-	registerInfo := &RegisterInfo{
-		Name:  getText(doc.Selection, "h2"),
-		Terms: getText(doc.Selection, ".terms"),
-		Register: func() error {
-			defer page.Close()
-
-			page.MustElement(".submit").
-				MustClick().WaitInvisible()
-			page.MustWaitLoad()
-			return nil
-		},
-	}
-	return registerInfo, nil
 }
