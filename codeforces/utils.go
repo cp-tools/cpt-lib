@@ -20,7 +20,7 @@ var (
 	selCSSError  = `.error`
 )
 
-func loadPage(link string, selMatch ...string) (*rod.Page, string) {
+func loadPage(link string) (*rod.Page, string) {
 	page := Browser.MustPage(link)
 	// Disable CSS and Img in webpage.
 	router := page.HijackRequests()
@@ -36,20 +36,12 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string) {
 	})
 	go router.Run()
 
-	selMatch = append([]string{selCSSNotif}, selMatch...)
-	elm := page.MustElement(selMatch...)
-
-	if page.MustInfo().URL != link {
-		page.WaitLoad()
-		if page.MustHas(selCSSNotif) {
-			// There was a redirect (with an error message).
-			elm = page.MustElement(selCSSNotif)
-		}
-	}
-
-	if elm.MustMatches(selCSSNotif) {
+	page.MustWaitLoad()
+	if page.MustHas(selCSSNotif) {
+		elm := page.MustElement(selCSSNotif)
 		return page, clean(elm.MustText())
 	}
+
 	return page, ""
 }
 

@@ -160,7 +160,7 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 		return 0, err
 	}
 
-	page, msg := loadPage(link, selCSSFooter)
+	page, msg := loadPage(link)
 	defer page.Close()
 
 	if msg != "" {
@@ -193,7 +193,7 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 		return nil, err
 	}
 
-	page, msg := loadPage(link, `tr[data-contestid]`)
+	page, msg := loadPage(link)
 
 	if msg != "" {
 		defer page.Close()
@@ -325,8 +325,6 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 
 		// iterate till no more valid pages left
 		for isFirstPage := true; pageCount > 0; pageCount-- {
-			page.WaitLoad()
-
 			contests := parseFunc(isFirstPage || (arg.Class != ClassContest))
 			chanContests <- contests
 			isFirstPage = false
@@ -336,9 +334,9 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 				break
 			}
 			// click navigation button and wait elm is removed from view.
-			elm := page.MustElementR(`.pagination li a`, "→")
-			elm.MustClick().WaitInvisible()
-			page.MustElement(`tr[data-contestid]`)
+			page.MustElementR(`.pagination li a`, "→").
+				MustClick().WaitInvisible()
+			page.MustWaitLoad()
 		}
 	}()
 	return chanContests, nil
@@ -353,7 +351,7 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 		return Dashboard{}, err
 	}
 
-	page, msg := loadPage(link, selCSSFooter)
+	page, msg := loadPage(link)
 	defer page.Close()
 
 	if msg != "" {
@@ -451,7 +449,7 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 		return nil, err
 	}
 
-	page, msg := loadPage(link, selCSSFooter)
+	page, msg := loadPage(link)
 
 	if msg != "" {
 		return nil, fmt.Errorf(msg)
@@ -463,9 +461,11 @@ func (arg Args) RegisterForContest() (*RegisterInfo, error) {
 		Name:  getText(doc.Selection, "h2"),
 		Terms: getText(doc.Selection, ".terms"),
 		Register: func() error {
-			page.MustElement(".submit").MustClick()
-			page.Element(`.contestList`)
-			page.Close()
+			defer page.Close()
+
+			page.MustElement(".submit").
+				MustClick().WaitInvisible()
+			page.MustWaitLoad()
 			return nil
 		},
 	}

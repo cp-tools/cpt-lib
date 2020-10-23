@@ -250,6 +250,13 @@ func TestArgs_GetSubmissions(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 		},
+		{
+			name:    "Test #6",
+			arg:     Args{"135", "", "contest", ""},
+			args:    args{"", 1},
+			want:    []Submission{},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
