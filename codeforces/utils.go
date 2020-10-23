@@ -20,7 +20,7 @@ var (
 	selCSSError  = `.error`
 )
 
-func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
+func loadPage(link string) (*rod.Page, string, error) {
 	// Load page and return error (if any).
 	page, err := Browser.Page(proto.TargetCreateTarget{URL: link})
 	if err != nil {
@@ -41,20 +41,12 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
 	})
 	go router.Run()
 
-	selMatch = append([]string{selCSSNotif}, selMatch...)
-	elm := page.MustElement(selMatch...)
-
-	if page.MustInfo().URL != link {
-		page.WaitLoad()
-		if page.MustHas(selCSSNotif) {
-			// There was a redirect (with an error message).
-			elm = page.MustElement(selCSSNotif)
-		}
-	}
-
-	if elm.MustMatches(selCSSNotif) {
+	page.MustWaitLoad()
+	if page.MustHas(selCSSNotif) {
+		elm := page.MustElement(selCSSNotif)
 		return page, clean(elm.MustText()), nil
 	}
+
 	return page, "", nil
 }
 

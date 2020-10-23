@@ -151,10 +151,10 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 		return 0, err
 	}
 
-	page, msg, err := loadPage(link, selCSSFooter)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return 0, err
-	}
+  }
 	defer page.Close()
 
 	if msg != "" {
@@ -187,7 +187,7 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link, `tr[data-contestid]`)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return nil, err
 	}
@@ -322,8 +322,6 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 
 		// iterate till no more valid pages left
 		for isFirstPage := true; pageCount > 0; pageCount-- {
-			page.WaitLoad()
-
 			contests := parseFunc(isFirstPage || (arg.Class != ClassContest))
 			chanContests <- contests
 			isFirstPage = false
@@ -333,9 +331,9 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 				break
 			}
 			// click navigation button and wait elm is removed from view.
-			elm := page.MustElementR(`.pagination li a`, "→")
-			elm.MustClick().WaitInvisible()
-			page.MustElement(`tr[data-contestid]`)
+			page.MustElementR(`.pagination li a`, "→").
+				MustClick().WaitInvisible()
+			page.MustWaitLoad()
 		}
 	}()
 	return chanContests, nil
@@ -350,7 +348,7 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 		return Dashboard{}, err
 	}
 
-	page, msg, err := loadPage(link, selCSSFooter)
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return Dashboard{}, err
 	}
