@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestArgs_problemsPage(t *testing.T) {
@@ -84,6 +85,8 @@ func TestArgs_problemsPage(t *testing.T) {
 }
 
 func TestArgs_GetProblems(t *testing.T) {
+	time.Sleep(time.Second * 10)
+
 	tests := []struct {
 		name    string
 		arg     Args
@@ -448,6 +451,8 @@ func TestArgs_GetProblems(t *testing.T) {
 }
 
 func TestArgs_SubmitSolution(t *testing.T) {
+	time.Sleep(time.Second * 10)
+
 	sFile, _ := ioutil.TempFile(os.TempDir(), "cpt-submission")
 	defer os.Remove(sFile.Name())
 	sFile.WriteString(genRandomString(30))

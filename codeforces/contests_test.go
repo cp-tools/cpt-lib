@@ -228,6 +228,8 @@ func TestArgs_dashboardPage(t *testing.T) {
 }
 
 func TestArgs_GetCountdown(t *testing.T) {
+	time.Sleep(time.Second * 10)
+
 	tests := []struct {
 		name    string
 		arg     Args
@@ -280,6 +282,8 @@ func TestArgs_GetCountdown(t *testing.T) {
 }
 
 func TestArgs_GetContests(t *testing.T) {
+	time.Sleep(time.Second * 10)
+
 	type args struct {
 		pageCount uint
 	}
@@ -507,6 +511,8 @@ func TestArgs_GetContests(t *testing.T) {
 }
 
 func TestArgs_GetDashboard(t *testing.T) {
+	time.Sleep(time.Second * 10)
+
 	tests := []struct {
 		name    string
 		arg     Args

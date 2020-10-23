@@ -154,7 +154,7 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 	page, msg, err := loadPage(link)
 	if err != nil {
 		return 0, err
-  }
+	}
 	defer page.Close()
 
 	if msg != "" {

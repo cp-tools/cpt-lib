@@ -140,6 +140,8 @@ func TestSubmission_sourceCodePage(t *testing.T) {
 }
 
 func TestArgs_GetSubmissions(t *testing.T) {
+	time.Sleep(time.Second * 10)
+
 	type args struct {
 		handle string
 		count  uint
@@ -326,6 +328,8 @@ func TestArgs_ChanGetSubmissions(t *testing.T) {
 }
 
 func TestSubmission_GetSourceCode(t *testing.T) {
+	time.Sleep(time.Second * 10)
+
 	tests := []struct {
 		name    string
 		sub     Submission
