@@ -447,39 +447,3 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 
 	return dashboard, nil
 }
-
-// RegisterForContest parses and returns registration terms
-// of contest specified in args.
-//
-// Provides callback method to register current user session
-// in contest. If registration was successful, returns nil error.
-func (arg Args) RegisterForContest() (*RegisterInfo, error) {
-
-	link, err := arg.RegisterPage()
-	if err != nil {
-		return nil, err
-	}
-
-	page, msg, err := loadPage(link, selCSSFooter)
-	if err != nil {
-		return nil, err
-	}
-
-	if msg != "" {
-		return nil, fmt.Errorf(msg)
-	}
-
-	doc := processHTML(page)
-
-	registerInfo := &RegisterInfo{
-		Name:  getText(doc.Selection, "h2"),
-		Terms: getText(doc.Selection, ".terms"),
-		Register: func() error {
-			page.MustElement(".submit").MustClick()
-			page.Element(`.contestList`)
-			page.Close()
-			return nil
-		},
-	}
-	return registerInfo, nil
-}
