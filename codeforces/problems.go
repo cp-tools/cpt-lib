@@ -37,7 +37,7 @@ const (
 	SolveNotAttempted = -1
 )
 
-// ProblemsPage returns link to problem(s) page in contest
+// ProblemsPage returns link to problem(s) page in contest.
 func (arg Args) ProblemsPage() (link string, err error) {
 	if arg.Contest == "" {
 		return "", ErrInvalidSpecifier

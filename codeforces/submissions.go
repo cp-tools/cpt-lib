@@ -9,7 +9,7 @@ import (
 )
 
 type (
-	// Submission holds submission data
+	// Submission holds submission data.
 	Submission struct {
 		ID        string
 		When      time.Time
@@ -64,7 +64,7 @@ func (arg Args) SubmissionsPage(handle string) (link string, err error) {
 	return
 }
 
-// SourceCodePage returns link to solution submission
+// SourceCodePage returns link to solution submission.
 func (sub Submission) SourceCodePage() (link string, err error) {
 	if sub.ID == "" || sub.Arg.Contest == "" {
 		return "", ErrInvalidSpecifier
@@ -92,7 +92,7 @@ func (sub Submission) SourceCodePage() (link string, err error) {
 //
 // Set 'pageCount' to the maximum number of pages (50 rows per page) you want to be scraped.
 // If 'pageCount' > 1, channel will not wait until all verdicts are declared, and will
-// close once submission data from all specified pages are extracted.
+// close once submission data from all specified pages is extracted.
 func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submission, error) {
 	link, err := arg.SubmissionsPage(handle)
 	if err != nil {
@@ -147,9 +147,9 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 	return chanSubmissions, nil
 }
 
-// GetSourceCode parses and returns source code of submission
-// as specified in the method. Has an auto sleep cycle of 4 seconds
-// to handle http error "Too Many Requests".
+// GetSourceCode parses and returns source code of submission.
+// Has an auto sleep cycle of 4 seconds to handle http error
+// "Too Many Requests".
 //
 // Due to a bug on codeforces, groups are not supported.
 func (sub Submission) GetSourceCode() (string, error) {

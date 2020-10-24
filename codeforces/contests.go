@@ -42,7 +42,7 @@ const (
 	RegistrationNotExists = -1
 )
 
-// CountdownPage returns link to countdown in contest
+// CountdownPage returns link to countdown in contest.
 func (arg Args) CountdownPage() (link string, err error) {
 	if arg.Contest == "" {
 		return "", ErrInvalidSpecifier
@@ -66,7 +66,7 @@ func (arg Args) CountdownPage() (link string, err error) {
 	return
 }
 
-// ContestsPage returns link to all contests page (group/gym/contest)
+// ContestsPage returns link to all contests page (group/gym/contest).
 func (arg Args) ContestsPage() (link string, err error) {
 
 	switch arg.Class {
@@ -102,7 +102,7 @@ func (arg Args) ContestsPage() (link string, err error) {
 	return
 }
 
-// DashboardPage returns link to dashboard of contest
+// DashboardPage returns link to dashboard of contest.
 func (arg Args) DashboardPage() (link string, err error) {
 	if arg.Contest == "" {
 		return "", ErrInvalidSpecifier
@@ -126,7 +126,7 @@ func (arg Args) DashboardPage() (link string, err error) {
 	return
 }
 
-// RegisterPage returns link to registration (not virtual reg) in contest
+// RegisterPage returns link to registration (not virtual reg) in contest.
 func (arg Args) RegisterPage() (link string, err error) {
 	if arg.Contest == "" || arg.Class != ClassContest {
 		return "", ErrInvalidSpecifier
