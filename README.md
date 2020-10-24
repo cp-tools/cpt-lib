@@ -89,8 +89,8 @@ To use the methods provided by the library, the automated browser must be initia
 func main(){
 	// Initialization parameters.
 	inHeadless := true
-    browser := "google-chrome"
-    browserProfile := "/home/<username>/.config/google-chrome/"
+  browser := "google-chrome"
+  browserProfile := "/home/<username>/.config/google-chrome/"
 	codeforces.Start(inHeadless, browserProfile, browser)
 	
 	// Do parsing here...
@@ -126,7 +126,7 @@ if err != nil{
 // Display information of fetched problems.
 for _, problem := range problems {
 	fmt.Println("Problem Name:", problem.Name)
-    fmt.Println("Time limit:", problem.TimeLimit)
+  fmt.Println("Time limit:", problem.TimeLimit)
 	fmt.Println("Number of sample tests:", len(problem.SampleTests))
 }
 ```
