@@ -130,14 +130,14 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	return probs, nil
 }
 
-// SubmitSolution submits source code to specifed problem.
+// SubmitSolution submits source code to specified problem.
 // langName is codeforces specified name of language to submit in.
 // file is the submission code file to upload.
 //
 // If submitted successfully, returns a chan updating verdict
 // of the current submission. View GetSubmissions() for more details.
 func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission, error) {
-	// problem not specifed, return invalid
+	// problem not specified, return invalid
 	if arg.Problem == "" {
 		return nil, ErrInvalidSpecifier
 	}
