@@ -5,7 +5,7 @@ Short for competitive programming tools library, `cpt-lib` is a collection of AP
 
 <!--Or visit cpt-api for a command line interface-->
 
-## Table of Contents
+# Table of Contents
 
 - [Overview](#overview)
 - [Supported Websites](#supported-websites)
@@ -14,10 +14,7 @@ Short for competitive programming tools library, `cpt-lib` is a collection of AP
   - [Usage](#usage)
 - [FAQ](#faq)
 
-
-
-
-## Overview
+# Overview
 
 cpt-lib is a library that provides a dynamic API wrapper to perform various functions, using an instance of a headless browser. Some notable benefits (over other libraries and official API) include:
 
@@ -28,7 +25,7 @@ cpt-lib is a library that provides a dynamic API wrapper to perform various func
 
 
 
-## Supported Websites
+# Supported Websites
 
 **Legend:** The number of symbols in **Support Status** signify the priority of development support.
 
@@ -40,12 +37,11 @@ cpt-lib is a library that provides a dynamic API wrapper to perform various func
 | [Codechef](https://codechef.com)     | :black_medium_square: :black_medium_square:  ​Future milestone |                                                              |
 
 
-
-## Getting Started
+# Getting Started
 
 *For complete usage examples and documentation, view tests of the corresponding functions.*
 
-### Installation
+## Installation
 
 Usage is simple. First use `go get` to install the latest version of the library.
 
@@ -59,9 +55,7 @@ Next, include cpt-lib in your application.
 import "github.com/cp-tools/cpt-lib"
 ```
 
-
-
-### Usage
+## Usage
 
 The core module powering all website functions is headless browser automation, achieved using [rod](https://github.com/go-rod/rod).
 Before fetching any data, the automated browser has to be initialised. This can be done easily using the `Start()` function provided:
@@ -110,9 +104,9 @@ for _, problem := range problems {
 
  
 
-## FAQ
+# FAQ
 
-#### Which browsers are supported?
+### Which browsers are supported?
 
 Since the project uses [go-rod/rod](https://github.com/go-rod/rod) as the headless browser controller, browsers that are supported by it are supported by this library. Nevertheless, is a gist of browser support:
 
@@ -122,18 +116,18 @@ Since the project uses [go-rod/rod](https://github.com/go-rod/rod) as the headle
 
 - **Use unofficial forks of this project with extreme caution:** Maliciously modified code could steal sensitive information from your browser sessions. Therefore, it is recommended that you don't use any  unofficial version of this library.
 
-#### Are there any security issues?
+### Are there any security issues?
 
 No, the library doesn't access or modify any sensitive information, including login credentials.
 
 However, that doesn't mean it isn't capable of doing the same. **Use unofficial versions of the project with extreme caution**, as it is very easy for malicious code to extract sensitive information from your browser cookies and logged in sessions.
 
-#### How do I use this library in other languages?
+### How do I use this library in other languages?
 
 Currently, there is no support for the same.
 However, we are working on a cross platform binary tool `cpt-api`, which will parse and return the specified information in `JSON` format. Expect it to be available very soon.
 
-#### What are the benefits of using browser automation over fetching web pages with GET requests?
+### What are the benefits of using browser automation over fetching web pages with GET requests?
 
 After lot of consideration, here are the pros of the browser automation method:
 
