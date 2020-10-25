@@ -42,7 +42,7 @@ func loadPage(link string) (*rod.Page, string, error) {
 	go router.Run()
 
 	page.MustWaitLoad()
-	if page.MustHas(selCSSNotif) {
+	if page.MustHas(selCSSNotif) && page.MustInfo().URL != link {
 		elm := page.MustElement(selCSSNotif)
 		return page, clean(elm.MustText()), nil
 	}
