@@ -5,6 +5,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/joho/godotenv"
 )
 
 func getLoginCredentials() (string, string) {
@@ -15,6 +17,9 @@ func getLoginCredentials() (string, string) {
 }
 
 func TestMain(m *testing.M) {
+	// Load local .env file.
+	godotenv.Load()
+
 	Start(true, "", "google-chrome")
 
 	if _, err := login(getLoginCredentials()); err != nil {
