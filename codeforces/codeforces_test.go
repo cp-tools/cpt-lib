@@ -7,25 +7,23 @@ import (
 	"testing"
 )
 
-func TestMain(m *testing.M) {
-	Start(true, "", "google-chrome")
-
+func getLoginCredentials() (string, string) {
 	// setup login access to use
 	usr := os.Getenv("CODEFORCES_USERNAME")
 	passwd := os.Getenv("CODEFORCES_PASSWORD")
-	if _, err := login(usr, passwd); err != nil {
+	return usr, passwd
+}
+
+func TestMain(m *testing.M) {
+	Start(true, "", "google-chrome")
+
+	if _, err := login(getLoginCredentials()); err != nil {
 		fmt.Println("Login failed:", err)
 		Browser.Close()
 		os.Exit(1)
 	}
 
 	exitCode := m.Run()
-
-	// logout current user
-	if err := logout(); err != nil {
-		fmt.Println("Logout failed:", err)
-		exitCode = 1
-	}
 
 	Browser.Close()
 	os.Exit(exitCode)
@@ -207,4 +205,48 @@ func TestArgs_String(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_login(t *testing.T) {
+	logout()
+
+	type args struct {
+		usr    string
+		passwd string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "Test #1",
+			args:    args{"cp-tools", "PleaseTryAgain"},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "Test #2",
+			args:    args{"", ""},
+			want:    "",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := login(tt.args.usr, tt.args.passwd)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("login() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("login() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+
+	// hope nothing goes wrong.
+	logout()
+	login(getLoginCredentials())
 }
