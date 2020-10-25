@@ -55,6 +55,9 @@ In the corresponding website folder, creat a new `.env` file, and save your logi
 ```bash
 # Keys should be all CAPS.
 
+# Should the tests run in headless mode?
+# Value of the key if set, should be empty.
+BROWSER_HEADLESS=
 # The browser to use for testing.
 BROWSER_BINARY=/usr/bin/google-chrome
 
