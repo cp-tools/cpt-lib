@@ -40,3 +40,8 @@ jobs:
         CODEFORCES_USERNAME: cp-tools
         CODEFORCES_PASSWORD: ${{ secrets.CODEFORCES_PASSWORD }}
 
+    - name: Upload Coverage
+      uses: shogo82148/actions-goveralls@v1
+      with:
+        path-to-profile: coverage.out
+
