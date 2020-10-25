@@ -4,7 +4,7 @@
 
 Short for competitive programming tools library, `cpt-lib` is a collection of API wrappers to request and upload data to various competitive programming websites, enabling the extraction and processing of a myriad of data with relative ease.
 
-Make sure to star the project if you found it useful. :smile:
+Make sure to star :star: the project if you found it useful. :smile:
 
 <!--Or visit cpt-api for a command line interface-->
 
@@ -15,6 +15,7 @@ Make sure to star the project if you found it useful. :smile:
 - [Getting Started](#getting-started)
   - [Installation](#installation)
   - [Usage](#usage)
+- [Contributing](CONTRIBUTING.md)
 - [FAQ](#faq)
 
 # Overview
@@ -179,8 +180,8 @@ And thus, the pros of this method clearly outweigh the cons, making this the bes
 
 ---
 
-However, if you wish to fallback to the older method, you may use the *archived* version using:
+However, if you wish to fallback to the older method, you may use the *archived* version:
 ```go
 go get -u github.com/cp-tools/cpt-lib/v1
 ```
-Note that, there will not be any future updates or support for this or other older versions.
+Note that, **there will not be any future updates or support** for versions prior to v2.
