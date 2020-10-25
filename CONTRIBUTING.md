@@ -52,13 +52,14 @@ time.Sleep(time.Second * 10)
 
 Once this is done, you will need to run your tests locally to check if your code works as expected. To do this, you will need to use **your personal account**, through which the tests will be conducted (however, do not use data of restricted content in your tests, as they might not work with the `cp-tools` testing account).
 
-In the root folder, modify the `.env` file, and save appropriate values in the following format:
+In the corresponding website folder, creat a new `.env` file, and save your login credentials, in the following format (the .env files are untracked, preventing you from accidently committing your creds):
 
 ```bash
 CODEFORCES_USERNAME=my-username
 CODEFORCES_PASSWORD=my-password
 
-# You may set only values required by the test.
+# The prefix should be the folder name.
+# Keys should be all CAPS.
 ```
 
 Then you can run tests in the following ways:
@@ -68,9 +69,10 @@ Then you can run tests in the following ways:
 - Otherwise, run the following command to test your code.
 
   ```bash
-  # Test_MyFunction is the name of the test function.
   # website refers to the website the changes are in.
-  go test -v -run Test_MyFunction ./website
+  cd ./website
+  # Test_MyFunction is the name of the test function.
+  go test -v -run Test_MyFunction
   ```
 
 The environment variables are automatically sourced by the tests, eliminating the need to source them prior to testing.
