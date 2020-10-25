@@ -1,5 +1,5 @@
 # cpt-lib
-[![codecov](https://codecov.io/gh/cp-tools/cpt-lib/branch/master/graph/badge.svg?token=VMMMOHWT1L)](undefined) [![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib) [![Go Report Card](https://goreportcard.com/badge/github.com/cp-tools/cpt-lib)](https://goreportcard.com/report/github.com/cp-tools/cpt-lib) ![GitHub](https://img.shields.io/github/license/cp-tools/cpt-lib)
+[![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib) [![Go Report Card](https://goreportcard.com/badge/github.com/cp-tools/cpt-lib)](https://goreportcard.com/report/github.com/cp-tools/cpt-lib) ![GitHub](https://img.shields.io/github/license/cp-tools/cpt-lib)
 
 Short for competitive programming tools library, `cpt-lib` is a collection of API wrappers to request and upload data to various competitive programming websites, enabling the extraction and processing of a myriad of data with relative ease.
 
@@ -34,7 +34,7 @@ Obviously, some websites have more features, while some have only a subset of th
 
 | Website                              | Support                        | Status            |                                                              |
 | ------------------------------------ | ------------------------------ | ----------------- | ------------------------------------------------------------ |
-| [CodeForces](https://codeforces.com) | :star::star::star::star::star: | Is supported      | [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/cp-tools/cpt-lib/Build%20and%20Test%20(codeforces)?label=Tests%20%28codeforces%29)](https://github.com/cp-tools/cpt-lib/actions) [![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces) |
+| [CodeForces](https://codeforces.com) | :star::star::star::star::star: | Is supported      | [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/cp-tools/cpt-lib/Build%20and%20Test%20(codeforces)?label=Tests%20%28codeforces%29)](https://github.com/cp-tools/cpt-lib/actions) [![Coverage Status](https://coveralls.io/repos/github/cp-tools/cpt-lib/badge.svg)](https://coveralls.io/github/cp-tools/cpt-lib?branch=add-codeforces-support) [![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces) |
 | [Atcoder](https://atcoder.jp)        | :star::star::star::star:       | Under development |                                                              |
 | [USACO](https://usaco.org)           | :star::star::star:             | Under development |                                                              |
 | [Codechef](https://codechef.com)     | :star::star::star:             | Future milestone  |                                                              |
@@ -68,13 +68,13 @@ Obviously, some websites have more features, while some have only a subset of th
 Usage is simple. First use `go get` to install the latest version of the library.
 
 ```go
-go get -u github.com/cp-tools/cpt-lib
+go get -u github.com/cp-tools/cpt-lib/v2
 ```
 
 Next, include cpt-lib in your application.
 
 ```go
-import "github.com/cp-tools/cpt-lib"
+import "github.com/cp-tools/cpt-lib/v2"
 ```
 
 ## Usage
@@ -170,7 +170,13 @@ This ensures nothing (history, cookies, bookmarks etc) of your specified user pr
 
 Currently, there is no official support for the same.
 
-We are working on a cross platform binary tool of the library, which will return the parsed data in `JSON` encoded format. Expect a beta version of the same to be available in the near future. 
+However, there are future plans:
+
+- An online REST API to fetch data of **public** contests.
+- A cross platform command line executable.
+- *Experimental:* Porting the project base to JavaScript code.
+
+Expect option two to be available in the near future.
 
 
 
@@ -187,4 +193,12 @@ Here are the major plus sides of using browser automation over source code fetch
 
 And thus, the pros of this method clearly outweigh the cons, making this the best method.
 
-However, if you persist on using the older, HTTP request based fetching method, you can use version 1 of the library. **Note that, there will not be any future development or support for this version**.
+---
+
+However, if you wish to fallback to the older method, you may use the *archived* version using:
+
+```go
+go get -u github.com/cp-tools/cpt-lib/v1
+```
+
+Note that, there will not be any updates or support for this (and older) version.
