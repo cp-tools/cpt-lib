@@ -37,7 +37,9 @@ jobs:
     - name: Test
       run: go test -v -coverprofile=coverage.out ./codeforces
       env:
+        BROWSER_HEADLESS:
         BROWSER_BINARY: google-chrome
+        
         CODEFORCES_USERNAME: cp-tools
         CODEFORCES_PASSWORD: ${{ secrets.CODEFORCES_PASSWORD }}
 
