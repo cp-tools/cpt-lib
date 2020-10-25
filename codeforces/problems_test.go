@@ -1,57 +1,92 @@
 package codeforces
 
 import (
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestArgs_problemsPage(t *testing.T) {
 	tests := []struct {
-		name     string
-		arg      Args
-		wantLink string
+		name    string
+		arg     Args
+		want    string
+		wantErr bool
 	}{
 		{
-			name:     "Test #1",
-			arg:      Args{"1", "", "contest", ""},
-			wantLink: "https://codeforces.com/contest/1/problems",
+			name:    "Test #1",
+			arg:     Args{"1", "", "contest", ""},
+			want:    "https://codeforces.com/contest/1/problems",
+			wantErr: false,
 		},
 		{
-			name:     "Test #2",
-			arg:      Args{"4", "b", "contest", ""},
-			wantLink: "https://codeforces.com/contest/4/problem/b",
+			name:    "Test #2",
+			arg:     Args{"4", "b", "contest", ""},
+			want:    "https://codeforces.com/contest/4/problem/b",
+			wantErr: false,
 		},
 		{
-			name:     "Test #3",
-			arg:      Args{"102341", "", "gym", ""},
-			wantLink: "https://codeforces.com/gym/102341/problems",
+			name:    "Test #3",
+			arg:     Args{"102341", "", "gym", ""},
+			want:    "https://codeforces.com/gym/102341/problems",
+			wantErr: false,
 		},
 		{
-			name:     "Test #4",
-			arg:      Args{"102323", "a", "gym", ""},
-			wantLink: "https://codeforces.com/gym/102323/problem/a",
+			name:    "Test #4",
+			arg:     Args{"102323", "a", "gym", ""},
+			want:    "https://codeforces.com/gym/102323/problem/a",
+			wantErr: false,
 		},
 		{
-			name:     "Test #5",
-			arg:      Args{"283855", "", "group", "bK73bvp3d7"},
-			wantLink: "https://codeforces.com/group/bK73bvp3d7/contest/283855/problems",
+			name:    "Test #5",
+			arg:     Args{"283855", "", "group", "bK73bvp3d7"},
+			want:    "https://codeforces.com/group/bK73bvp3d7/contest/283855/problems",
+			wantErr: false,
 		},
 		{
-			name:     "Test #6",
-			arg:      Args{"283855", "c", "group", "bK73bvp3d7"},
-			wantLink: "https://codeforces.com/group/bK73bvp3d7/contest/283855/problem/c",
+			name:    "Test #6",
+			arg:     Args{"283855", "c", "group", "bK73bvp3d7"},
+			want:    "https://codeforces.com/group/bK73bvp3d7/contest/283855/problem/c",
+			wantErr: false,
+		},
+		{
+			name:    "Test #7",
+			arg:     Args{},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "Test #8",
+			arg:     Args{"283855", "", "group", ""},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "Test #9",
+			arg:     Args{"45", "d", "invalid", ""},
+			want:    "",
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if gotLink := tt.arg.ProblemsPage(); gotLink != tt.wantLink {
-				t.Errorf("Args.problemsPage() = %v, want %v", gotLink, tt.wantLink)
+			got, err := tt.arg.ProblemsPage()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Args.problemsPage() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Args.problemsPage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestArgs_GetProblems(t *testing.T) {
+	time.Sleep(time.Second * 10)
+
 	tests := []struct {
 		name    string
 		arg     Args
@@ -368,7 +403,13 @@ func TestArgs_GetProblems(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Test #6",
+			name:    "Test #6",
+			arg:     Args{"543", "d1", "invalid", ""},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "Test #7",
 			arg:  Args{"277493", "t", "group", "MEqF8b6wBT"},
 			want: []Problem{
 				{
@@ -388,6 +429,12 @@ func TestArgs_GetProblems(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name:    "Test #8",
+			arg:     Args{"12345", "", "contest", ""},
+			want:    nil,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -404,7 +451,11 @@ func TestArgs_GetProblems(t *testing.T) {
 }
 
 func TestArgs_SubmitSolution(t *testing.T) {
-	source := genRandomString(30)
+	time.Sleep(time.Second * 10)
+
+	sFile, _ := ioutil.TempFile(os.TempDir(), "cpt-submission")
+	defer os.Remove(sFile.Name())
+	sFile.WriteString(genRandomString(30))
 
 	type args struct {
 		langID string
@@ -419,21 +470,70 @@ func TestArgs_SubmitSolution(t *testing.T) {
 		{
 			name:    "Test #1",
 			arg:     Args{"5", "a", "contest", ""},
-			args:    args{"54", source},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
 			wantErr: false,
 		},
 		{
-			name:    "Test #2",
+			name:    "Test #3", // Invalid args.
+			arg:     Args{"55", "", "contest", ""},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
+			wantErr: true,
+		},
+		{
+			name:    "Test #4", // Invalid language.
 			arg:     Args{"5", "a", "contest", ""},
-			args:    args{"54", source},
+			args:    args{"Invalid Language", sFile.Name()},
+			wantErr: true,
+		},
+		{
+			name:    "Test #5", // Invalid file.
+			arg:     Args{"5", "a", "contest", ""},
+			args:    args{"GNU G++17 7.3.0", "invalid-file.cpp"},
+			wantErr: true,
+		},
+		{
+			name:    "Test #6", // Invalid args.
+			arg:     Args{"45", "d", "invalid", ""},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
+			wantErr: true,
+		},
+		{
+			name:    "Test #7", // Invalid contest.
+			arg:     Args{"12345", "d", "contest", ""},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
+			wantErr: true,
+		},
+		{
+			name:    "Test #8", // Language can't be used.
+			arg:     Args{"1346", "a", "contest", ""},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
+			wantErr: true,
+		},
+		{
+			name:    "Test #2", // Same submission error.
+			arg:     Args{"5", "a", "contest", ""},
+			args:    args{"GNU G++17 7.3.0", sFile.Name()},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.arg.SubmitSolution(tt.args.langID, tt.args.source); (err != nil) != tt.wantErr {
+			submission, err := tt.arg.SubmitSolution(tt.args.langID, tt.args.source)
+			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.SubmitSolution() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
+			if err == nil {
+				finalSub := Submission{}
+				for sub := range submission {
+					finalSub = sub
+				}
+
+				if finalSub.Verdict != "Compilation error" {
+					t.Errorf("Args.SubmitSolution() finalSub = %v", finalSub)
+				}
+			}
+
 		})
 	}
 }

@@ -1,16 +1,15 @@
 package codeforces
 
 import (
-	"bytes"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/go-rod/rod"
 )
 
 type (
-	// Submission holds submission data
+	// Submission holds submission data.
 	Submission struct {
 		ID        string
 		When      time.Time
@@ -25,144 +24,213 @@ type (
 	}
 )
 
-// SubmissionsPage returns link to user submissions
-func (arg Args) SubmissionsPage(handle string) (link string) {
-	// contest specified
-	if len(arg.Contest) != 0 {
-		if arg.Class == ClassGroup {
-			// does this even work?!
-			if len(handle) == 0 {
-				link = fmt.Sprintf("%v/group/%v/contest/%v/my",
-					hostURL, arg.Group, arg.Contest)
-			} else {
-				link = fmt.Sprintf("%v/submissions/%v/group/%v/contest/%v",
-					hostURL, handle, arg.Group, arg.Contest)
+// SubmissionsPage returns link to user submissions page.
+func (arg Args) SubmissionsPage(handle string) (link string, err error) {
+	// Contest not specified.
+	if arg.Contest == "" {
+		if handle == "" {
+			// Extract handle from homepage.
+			// No actual login is done in below code.
+			var err error
+			if handle, err = login("", ""); err != nil {
+				return "", ErrInvalidSpecifier
 			}
+		}
+
+		link = fmt.Sprintf("%v/submissions/%v", hostURL, handle)
+		return
+	}
+
+	switch arg.Class {
+	case ClassGroup:
+		if handle != "" {
+			// Fetching others submissions not possible.
+			return "", ErrInvalidSpecifier
+		}
+
+		link = fmt.Sprintf("%v/group/%v/contest/%v/my", hostURL, arg.Group, arg.Contest)
+
+	case ClassContest, ClassGym:
+		if handle == "" {
+			link = fmt.Sprintf("%v/%v/%v/my", hostURL, arg.Class, arg.Contest)
 		} else {
-			if len(handle) == 0 {
-				link = fmt.Sprintf("%v/%v/%v/my",
-					hostURL, arg.Class, arg.Contest)
-			} else {
-				link = fmt.Sprintf("%v/submissions/%v/%v/%v",
-					hostURL, handle, arg.Class, arg.Contest)
-			}
+			link = fmt.Sprintf("%v/submissions/%v/%v/%v", hostURL, handle, arg.Class, arg.Contest)
 		}
-	} else {
-		if len(handle) == 0 {
-			// I think this is a bad idea....
-			handle, _ = Login("", "")
-		}
-		link = fmt.Sprintf("%v/submissions/%v",
-			hostURL, handle)
+
+	default:
+		return "", ErrInvalidSpecifier
 	}
+
 	return
 }
 
-// SourceCodePage returns link to solution submission
-func (sub Submission) SourceCodePage() (link string) {
-	if sub.Arg.Class == ClassGroup {
-		link = fmt.Sprintf("%v/group/%v/contest/%v/submission/%v",
-			hostURL, sub.Arg.Group, sub.Arg.Contest, sub.ID)
-	} else {
-		link = fmt.Sprintf("%v/%v/%v/submission/%v",
-			hostURL, sub.Arg.Class, sub.Arg.Contest, sub.ID)
+// SourceCodePage returns link to solution submission code.
+func (sub Submission) SourceCodePage() (link string, err error) {
+	if sub.ID == "" || sub.Arg.Contest == "" {
+		return "", ErrInvalidSpecifier
 	}
+
+	switch sub.Arg.Class {
+	case ClassGroup:
+		link = fmt.Sprintf("%v/group/%v/contest/%v/submission/%v", hostURL, sub.Arg.Group, sub.Arg.Contest, sub.ID)
+
+	case ClassContest, ClassGym:
+		link = fmt.Sprintf("%v/%v/%v/submission/%v", hostURL, sub.Arg.Class, sub.Arg.Contest, sub.ID)
+
+	default:
+		return "", ErrInvalidSpecifier
+	}
+
 	return
 }
 
-// GetSubmissions parses and returns all submissions data in specified args
-// of given user. Fetches details of all submissions of handle if args is nil.
+// GetSubmissions returns submissions metadata of given user.
+// If contest is not specified, returns all submissions of user.
 //
-// If handle is not set, fetches submissions of currently active user session.
+// Due to a bug on codeforces, fetching submissions in group contests
+// are not supported, when the contest isn't specified.
 //
-// Due to a bug on codeforces, submissions in groups are not supported.
-func (arg Args) GetSubmissions(handle string) ([]Submission, error) {
-	link := arg.SubmissionsPage(handle)
-	resp, err := SessCln.Get(link)
+// Set pageCount to maximum number of pages to parse. Each page consists of 50
+// rows of data. If pageCount is 1, the returned channel will keep returning page
+// data, till all verdicts of submissions in the page are declared.
+func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submission, error) {
+	link, err := arg.SubmissionsPage(handle)
 	if err != nil {
 		return nil, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		// shouldn't return any error on success
+
+	page, msg, err := loadPage(link)
+	if err != nil {
+		return nil, err
+	}
+
+	if msg != "" {
+		defer page.Close()
 		return nil, fmt.Errorf(msg)
 	}
 
 	// @todo Add support for excluding unofficial submissions
 
-	var submissions []Submission
-	pages := findPagination(body)
-	for c := 1; c <= pages; c++ {
-		doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
-		table := doc.Find("tr[data-submission-id]")
-		table.Each(func(_ int, sub *goquery.Selection) {
-			probLk := hostURL + getAttr(sub, "td:nth-of-type(4) a", "href")
-			subArg, _ := Parse(probLk)
+	// create buffered channel for submissions
+	chanSubmissions := make(chan []Submission, 10)
+	go func() {
+		defer page.Close()
+		defer close(chanSubmissions)
 
-			if len(arg.Problem) == 0 || arg.Problem == subArg.Problem {
-				// parse various details
-				isJudging := getAttr(sub, "td:nth-of-type(6)", "waiting") == "true"
-				when := parseTime(getText(sub, "td:nth-of-type(2)"))
-
-				submissions = append(submissions, Submission{
-					ID:       getText(sub, "td:nth-of-type(1)"),
-					When:     when,
-					Who:      getText(sub, "td:nth-of-type(3)"),
-					Problem:  getText(sub, "td:nth-of-type(4)"),
-					Language: getText(sub, "td:nth-of-type(5)"),
-					Verdict:  getText(sub, "td:nth-of-type(6)"),
-					Time:     getText(sub, "td:nth-of-type(7)"),
-					Memory:   getText(sub, "td:nth-of-type(8)"),
-
-					IsJudging: isJudging,
-					Arg:       subArg,
-				})
+		if pageCount == 1 {
+			// loop till 'isDone' is true
+			for true {
+				submissions, isDone := arg.parseSubmissions(page)
+				chanSubmissions <- submissions
+				if isDone == true {
+					break
+				}
+				time.Sleep(time.Millisecond * 350)
 			}
-		})
-		if c+1 <= pages {
-			cLink := fmt.Sprintf("%v/page/%d", link, c+1)
-			resp, err = SessCln.Get(cLink)
-			if err != nil {
-				return nil, err
-			}
-			body, msg = parseResp(resp)
-			if len(msg) != 0 {
-				return nil, fmt.Errorf(msg)
+		} else {
+			// iterate till no more valid required pages left
+			for ; pageCount > 0; pageCount-- {
+				submissions, _ := arg.parseSubmissions(page)
+				chanSubmissions <- submissions
+
+				if !page.MustHasR(".pagination li a", "→") || pageCount < 2 {
+					// no more pages to parse
+					break
+				}
+				// click navigation button and wait till loads
+				page.MustElementR(".pagination li a", "→").
+					MustClick().WaitInvisible()
+				page.MustWaitLoad()
 			}
 		}
-	}
-	return submissions, nil
+	}()
+	return chanSubmissions, nil
 }
 
-// GetSourceCode parses and returns source code of submission
-// as specified in the method. Has an auto sleep cycle of 4 seconds
-// to handle http error "Too Many Requests".
-//
-// Due to a bug on codeforces, groups are not supported.
+// GetSourceCode returns submission code of given submission.
 func (sub Submission) GetSourceCode() (string, error) {
-	var source string
-	if len(sub.Arg.Contest) == 0 || len(sub.ID) == 0 {
-		return "", ErrInvalidSpecifier
+
+	link, err := sub.SourceCodePage()
+	if err != nil {
+		return "", err
 	}
 
-	link := sub.SourceCodePage()
-FETCH:
-	resp, err := SessCln.Get(link)
+	page, msg, err := loadPage(link)
 	if err != nil {
-		return source, err
+		return "", err
 	}
-	if resp.StatusCode == http.StatusTooManyRequests {
-		// sleep for 4 seconds before resending request
-		time.Sleep(time.Second * 4)
-		goto FETCH
+	defer page.Close()
+
+	if msg != "" {
+		return "", fmt.Errorf(msg)
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		// msg should be length 0 if success
-		return source, fmt.Errorf(msg)
-	}
+
 	// extract source code from html body
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
-	source = doc.Find("pre#program-source-text").Text()
+	source := page.MustEval(`Codeforces.filterClipboardText(
+		document.querySelector("#program-source-text").innerText)`).String()
 	return source, nil
+}
+
+// parse specified submissions from current page.
+func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
+	submissions := make([]Submission, 0)
+	isDone := true
+
+	doc := processHTML(page)
+	// WARNING! ugly extraction code ahead. Don't peep XD
+	table := doc.Find("tr[data-submission-id]")
+	table.Each(func(_ int, row *goquery.Selection) {
+		var submissionRow Submission
+		// extract contest args from html attr label
+		subArg, _ := Parse(hostURL + getAttr(row, "td:nth-of-type(4) a", "href"))
+		if arg.Problem != "" && arg.Problem != subArg.Problem {
+			return
+		}
+		submissionRow.Arg = subArg
+
+		row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
+			switch cellIdx {
+			case 0:
+				id := clean(cell.Text())
+				submissionRow.ID = id
+
+			case 1:
+				when := parseTime(clean(cell.Text()))
+				submissionRow.When = when
+
+			case 2:
+				who := clean(cell.Text())
+				submissionRow.Who = who
+
+			case 3:
+				problem := clean(cell.Text())
+				submissionRow.Problem = problem
+
+			case 4:
+				language := clean(cell.Text())
+				submissionRow.Language = language
+
+			case 5:
+				isJudging := cell.AttrOr("waiting", "") == "true"
+				submissionRow.IsJudging = isJudging
+				if isJudging == true {
+					isDone = false
+				}
+
+				verdict := clean(cell.Text())
+				submissionRow.Verdict = verdict
+
+			case 6:
+				time := clean(cell.Text())
+				submissionRow.Time = time
+
+			case 7:
+				memory := clean(cell.Text())
+				submissionRow.Memory = memory
+			}
+		})
+		submissions = append(submissions, submissionRow)
+	})
+
+	return submissions, isDone
 }

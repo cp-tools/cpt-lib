@@ -1,22 +1,22 @@
 package codeforces
 
 import (
-	"bytes"
 	"fmt"
-	"net/url"
-	"strings"
+	"os"
+	"regexp"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
 type (
-	// SampleTest maps sample input to sample output.
+	// SampleTest holds sample test case data.
 	SampleTest struct {
 		Input  string
 		Output string
 	}
 
-	// Problem data is parsed to this struct.
+	// Problem holds data of problem.
 	Problem struct {
 		Name        string
 		TimeLimit   string
@@ -37,65 +37,75 @@ const (
 	SolveNotAttempted = -1
 )
 
-// ProblemsPage returns link to problem(s) page in contest
-func (arg Args) ProblemsPage() (link string) {
-	// problem specified
-	if len(arg.Problem) != 0 {
-		if arg.Class == ClassGroup {
-			link = fmt.Sprintf("%v/group/%v/contest/%v/problem/%v",
-				hostURL, arg.Group, arg.Contest, arg.Problem)
-		} else {
-			link = fmt.Sprintf("%v/%v/%v/problem/%v",
-				hostURL, arg.Class, arg.Contest, arg.Problem)
-		}
-	} else {
-		if arg.Class == ClassGroup {
-			link = fmt.Sprintf("%v/group/%v/contest/%v/problems",
-				hostURL, arg.Group, arg.Contest)
-		} else {
-			link = fmt.Sprintf("%v/%v/%v/problems",
-				hostURL, arg.Class, arg.Contest)
-		}
+// ProblemsPage returns link to problem(s) page in contest.
+func (arg Args) ProblemsPage() (link string, err error) {
+	if arg.Contest == "" {
+		return "", ErrInvalidSpecifier
 	}
+
+	switch arg.Class {
+	case ClassGroup:
+		if arg.Group == "" {
+			return "", ErrInvalidSpecifier
+		}
+
+		if arg.Problem == "" {
+			link = fmt.Sprintf("%v/group/%v/contest/%v/problems", hostURL, arg.Group, arg.Contest)
+		} else {
+			link = fmt.Sprintf("%v/group/%v/contest/%v/problem/%v", hostURL, arg.Group, arg.Contest, arg.Problem)
+		}
+
+	case ClassContest, ClassGym:
+		if arg.Problem == "" {
+			link = fmt.Sprintf("%v/%v/%v/problems", hostURL, arg.Class, arg.Contest)
+		} else {
+			link = fmt.Sprintf("%v/%v/%v/problem/%v", hostURL, arg.Class, arg.Contest, arg.Problem)
+		}
+
+	default:
+		return "", ErrInvalidSpecifier
+	}
+
 	return
 }
 
-// GetProblems parses problem(s) details along with sample tests.
-// If problem field is not specified, extracts details of all problems
-// in the contest.
+// GetProblems returns problem(s) meta data, along with sample tests.
 //
-// In some older contests, complete problemset page is not supported.
-// Preferably fallback to parsing individual problems if entire parsing
-// fails.
+// If the problem is not specified, returns data of all problems in
+// the specified contest. In some older contests, the complete
+// problemset page is not present. In such cases, fallback to running
+// GetProblems() for each problem in the contest.
 //
-// Doesn't fetch 'SolveStatus' and 'SolveCount' of problem.
-// Use GetDashboard() to fetch these info fields.
+// SolveStatus and SolveCount are not parsed by this.
+// Use GetDashboard() if you require these fields.
 func (arg Args) GetProblems() ([]Problem, error) {
-	if len(arg.Contest) == 0 {
-		return nil, ErrInvalidSpecifier
-	}
 
-	link := arg.ProblemsPage()
-	resp, err := SessCln.Get(link)
+	link, err := arg.ProblemsPage()
 	if err != nil {
 		return nil, err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		// shouldn't return any error if success
+
+	page, msg, err := loadPage(link)
+	if err != nil {
+		return nil, err
+	}
+	defer page.Close()
+
+	if msg != "" {
 		return nil, fmt.Errorf(msg)
 	}
+
+	doc := processHTML(page)
+
 	// to hold problem data
 	var probs []Problem
-
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
 	table := doc.Find(".problemindexholder")
-	table.Each(func(_ int, prob *goquery.Selection) {
-		probArg, _ := Parse(arg.Group + arg.Contest + prob.AttrOr("problemindex", ""))
+	table.Each(func(_ int, row *goquery.Selection) {
+		probArg, _ := Parse(arg.Group + arg.Contest + row.AttrOr("problemindex", ""))
 
 		// sample tests of problem
 		var sampleTests []SampleTest
-		inp, out := prob.Find(".input"), prob.Find(".output")
+		inp, out := row.Find(".input"), row.Find(".output")
 		for i := 0; i < inp.Length(); i++ {
 			inpStr, _ := inp.Find("pre").Eq(i).Html()
 			outStr, _ := out.Find("pre").Eq(i).Html()
@@ -105,7 +115,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 			})
 		}
 
-		header := prob.Find(".header")
+		header := row.Find(".header")
 		probs = append(probs, Problem{
 			Name:        getText(header, ".title"),
 			TimeLimit:   clean(header.Find(".time-limit").Contents().Last().Text()),
@@ -119,74 +129,92 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	return probs, nil
 }
 
-// SubmitSolution submits source code to specifed problem.
-// langID is codeforces specified id of language to submit in.
-// View cp-tools/codeforces.wiki for list of valid ID's.
-// Source is code text to submit.
+// SubmitSolution submits given file to the judging server,
+// and returns a channel on a successful submission.
+// The channel contains the live status of the submission.
+// View GetSubmissions() for more details on the returned channel.
 //
-// If submission completed successfully, returns nil error.
-func (arg Args) SubmitSolution(langID string, source string) error {
-	// problem not specifed, return invalid
-	if len(arg.Contest) == 0 || len(arg.Problem) == 0 {
-		return ErrInvalidSpecifier
-	}
-	// if langID invalid, return invalid
-	isLangIDValid := false
-	for _, v := range LanguageID {
-		if v == langID {
-			isLangIDValid = true
-			break
-		}
-	}
-	if isLangIDValid == false {
-		return fmt.Errorf("Invalid language id")
+// langName is the codeforces configured language to use. See the
+// variable map LanguageID for the list of supported languages.
+func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission, error) {
+	// problem not specified, return invalid
+	if arg.Problem == "" {
+		return nil, ErrInvalidSpecifier
 	}
 
-	link := arg.ProblemsPage()
-	resp, err := SessCln.Get(link)
+	if _, ok := LanguageID[langName]; !ok {
+		return nil, fmt.Errorf("Invalid language")
+	}
+
+	// check if given file exists
+	if fl, err := os.Stat(file); os.IsNotExist(err) || fl.IsDir() {
+		return nil, fmt.Errorf("Invalid file path")
+	}
+
+	link, err := arg.ProblemsPage()
 	if err != nil {
-		return err
-	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		// shouldn't return any error if success
-		return fmt.Errorf(msg)
+		return nil, err
 	}
 
-	// hidden form data
-	csrf := findCsrf(body)
-	ftaa := genRandomString(18)
-	bfaa := genRandomString(32)
-
-	resp, err = SessCln.PostForm(link, url.Values{
-		"csrf_token":            {csrf},
-		"ftaa":                  {ftaa},
-		"bfaa":                  {bfaa},
-		"action":                {"submitSolutionFormSubmitted"},
-		"submittedProblemIndex": {arg.Problem},
-		"programTypeId":         {langID},
-		"contestId":             {arg.Contest},
-		"source":                {source},
-		"tabSize":               {"4"},
-		"_tta":                  {"176"},
-		"sourceCodeConfirmed":   {"true"},
-	})
+	page, msg, err := loadPage(link)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	body, msg = parseResp(resp)
-	doc, _ := goquery.NewDocumentFromReader(bytes.NewReader(body))
-	if msg1 := getText(doc.Selection, ".error.for__source"); len(msg1) != 0 {
+	if msg != "" {
+		defer page.Close()
+		return nil, fmt.Errorf(msg)
+	}
+
+	// check if user is logged in
+	if !page.MustHas(selCSSHandle) {
+		defer page.Close()
+		return nil, fmt.Errorf("No logged in session present")
+	}
+
+	// check if submitting is possible at all.
+	if !page.MustHas(`input.submit`) {
+		defer page.Close()
+		return nil, fmt.Errorf("Problem not open for submission")
+	}
+
+	// check if specified language can be selected
+	// if this is allowed, so is submitting.
+	if !page.MustHasR(`select>option[value]`, regexp.QuoteMeta(langName)) {
+		defer page.Close()
+		return nil, fmt.Errorf("Language not allowed in problem")
+	}
+
+	// do the submitting here! (really simple)
+	page.MustElement(`select[name="programTypeId"]`).MustSelect(langName)
+	page.MustElement(`input[name="sourceFile"]`).MustSetFiles(file)
+	page.MustElement(`input.submit`).MustClick().WaitInvisible()
+	page.MustWaitLoad()
+
+	if page.MustHas(selCSSError) {
+		defer page.Close()
 		// static error message (exact submission done before)
-		return fmt.Errorf(msg1)
-	}
-	// successful submission should have message :
-	// "Solution to the problem X has been submitted successfully"
-	if strings.EqualFold(msg, "Solution to the problem "+arg.Problem+" has been submitted successfully") {
-		// submission successful!!!
-		return nil
+		elm := page.MustElement(selCSSError)
+		msg := clean(elm.MustText())
+		return nil, fmt.Errorf(msg)
+
 	}
 
-	return fmt.Errorf(msg)
+	// return live progress of submission
+	chanSubmission := make(chan Submission, 500)
+	go func() {
+		defer page.Close()
+		defer close(chanSubmission)
+
+		for true {
+			submissions, _ := arg.parseSubmissions(page)
+			chanSubmission <- submissions[0]
+			if submissions[0].IsJudging == false {
+				break
+			}
+			time.Sleep(time.Millisecond * 350)
+		}
+	}()
+
+	return chanSubmission, nil
 }

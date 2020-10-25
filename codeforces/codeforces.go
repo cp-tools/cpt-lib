@@ -2,16 +2,19 @@ package codeforces
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
 )
 
 type (
 	// Args holds specifier details parsed by
-	// Parse() function. Provides methods to
-	// access value of specifiers (read-only).
+	// Parse() function. All methods use this
+	// at the core.
 	Args struct {
 		Contest string
 		Problem string
@@ -27,48 +30,103 @@ const (
 	ClassGym     = "gym"
 )
 
-// Set errors returned by library.
+// Errors returned by library.
 var (
 	ErrInvalidSpecifier   = fmt.Errorf("invalid specifier data")
-	ErrInvalidCredentials = fmt.Errorf("invalid login credentials")
+	errInvalidCredentials = fmt.Errorf("invalid login credentials")
 )
 
 var (
 	hostURL = "https://codeforces.com"
-	// SessCln should be set to desired session configuration.
-	// Ensure cookies, proxy protocol etc are set up if reqd.
-	SessCln *http.Client
+
+	// Browser is the headless browser to use.
+	Browser *rod.Browser
 )
 
-func (arg Args) String() string {
-	// 201468 c1 (group/Qvv4lz52cT)
-	// 1234 (contest)
-	// 100522 f1 (gym)
+// Start initiates the headless browser to use.
+func Start(headless bool, userDataDir, bin string) error {
+	// Launch browser.
+	launchBrowser := func(controlURL string) (*rod.Browser, error) {
+		b := rod.New().ControlURL(controlURL)
+		if err := b.Connect(); err != nil {
+			return nil, err
+		}
+		return b, nil
+	}
 
-	var str string
-	if arg.Group != "" {
+	// Store data in cache (to reduce time).
+	cacheDir, _ := os.UserCacheDir()
+	cacheUserDataDir := filepath.Join(cacheDir, "cp-tools", "cpt-lib", bin)
+
+	// Initiate the browser to use.
+	l := launcher.New().
+		UserDataDir(cacheUserDataDir).
+		Headless(headless).
+		Bin(bin)
+
+	controlURL, err := l.Launch()
+	if err != nil {
+		return err
+	}
+
+	Browser, err = launchBrowser(controlURL)
+	if err != nil {
+		return err
+	}
+
+	// Load temporary browser to extract cookies only if path exists.
+	if file, err := os.Stat(userDataDir); err == nil && file.IsDir() {
+		// Initiate browser to extract cookies from.
+		cookiesl := launcher.NewUserMode().
+			UserDataDir(userDataDir).
+			Headless(true).
+			Bin(bin)
+
+		cookiesControlURL, err := cookiesl.Launch()
+		if err != nil {
+			return err
+		}
+
+		cookiesBrowser, err := launchBrowser(cookiesControlURL)
+		if err != nil {
+			return err
+		}
+		defer cookiesBrowser.Close()
+		// Copy cookies of user.
+		Browser.MustSetCookies(cookiesBrowser.MustGetCookies())
+	}
+
+	return nil
+}
+
+func (arg Args) String() (str string) {
+	if arg == (Args{}) {
+		return ""
+	}
+
+	switch arg.Class {
+	case ClassGroup:
 		str = fmt.Sprintf("%v %v (%v/%v)", arg.Contest, arg.Problem, arg.Class, arg.Group)
-	} else {
+
+	case ClassContest, ClassGym:
 		str = fmt.Sprintf("%v %v (%v)", arg.Contest, arg.Problem, arg.Class)
 	}
+
 	return strings.Join(strings.Fields(str), " ")
 }
 
-// LoginPage returns link to login page
-func LoginPage() string {
+// loginPage returns link to login page.
+func loginPage() string {
 	return fmt.Sprintf("%v/enter", hostURL)
 }
 
 // Parse passed in specifier string to new Args struct.
 // Validates parsed args and returns error if any.
-//
-// List of valid specifiers can be viewed at
-// github.com/cp-tools/codeforces/wiki.
 func Parse(str string) (Args, error) {
 	var (
 		rxCont  = `(?P<cont>\d+)`
 		rxProb  = `(?P<prob>[A-Za-z][1-9]?)`
-		rxClass = `(?P<class>contest|gym|group|problemset)`
+		rxClass = `(?P<class>contest|gym|group)`
 		rxGroup = `(?P<group>\w{10})`
 
 		valRx = []string{
@@ -76,23 +134,20 @@ func Parse(str string) (Args, error) {
 			`codeforces.com\/` + rxClass + `\/` + rxCont + `\/problem\/` + rxProb + `$`,
 			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + `contest` + `\/` + rxCont + `$`,
 			`codeforces.com\/` + rxClass + `\/` + rxGroup + `\/` + `contest` + `\/` + rxCont + `\/problem\/` + rxProb + `$`,
-			`codeforces.com\/` + rxClass + `\/problem\/` + rxCont + `\/` + rxProb + `$`,
+			`codeforces.com\/problemset\/problem\/` + rxCont + `\/` + rxProb + `$`,
+
+			`^\s*` + rxClass + `$`,
+			`^\s*` + rxGroup + `$`,
 
 			`^\s*` + rxCont + `$`,
 			`^\s*` + rxCont + `\s*` + rxProb + `$`,
 			`^\s*` + rxGroup + `\s*` + rxCont + `$`,
 			`^\s*` + rxGroup + `\s*` + rxCont + `\s*` + rxProb + `$`,
-
-			// for local folders parsing
-			`^\s*` + rxClass + `\s*` + rxCont + `$`,
-			`^\s*` + rxClass + `\s*` + rxCont + `\s*` + rxProb + `$`,
-			`^\s*` + rxClass + `\s*` + rxGroup + `\s*` + rxCont + `$`,
-			`^\s*` + rxClass + `\s*` + rxGroup + `\s*` + rxCont + `\s*` + rxProb + `$`,
 		}
 	)
 
 	str = strings.TrimSpace(str)
-	if len(str) == 0 {
+	if str == "" {
 		return Args{}, nil
 	}
 
@@ -103,7 +158,7 @@ func Parse(str string) (Args, error) {
 			match := re.FindStringSubmatch(str)
 			result := map[string]string{}
 			for i, name := range re.SubexpNames() {
-				if i != 0 && len(name) > 0 {
+				if i != 0 && name != "" {
 					result[name] = match[i]
 				}
 			}
@@ -112,6 +167,7 @@ func Parse(str string) (Args, error) {
 			arg := Args{
 				Contest: result["cont"],
 				Problem: result["prob"],
+				Class:   result["class"],
 				Group:   result["group"],
 			}
 			arg.setContestClass()
@@ -121,57 +177,70 @@ func Parse(str string) (Args, error) {
 	return Args{}, ErrInvalidSpecifier
 }
 
-// Login tries logging into codeforces using credentials passed.
-// Checks if any active session exists (in SessCln) before logging in.
-// If you wish to overwrite currently logged in session, set cookies
-// of SessCln to nil before logging in.
+// login tries logging into codeforces using credentials passed.
+// Checks if any active session exists before logging in.
 //
-// If login is successful, returns user handle of now logged in session.
-// Otherwise, if login fails, returns ErrInvalidCredentials as error.
+// If login is successful, returns user handle of logged in session.
+// Otherwise, if login fails, returns ErrInvalidCredentials.
 //
 // By default, option 'remember me' is checked, ensuring the session
 // has expiry period of one month from date of last login.
-func Login(usr, passwd string) (string, error) {
-	link := LoginPage()
-	resp, err := SessCln.Get(link)
+func login(usr, passwd string) (string, error) {
+	link := loginPage()
+	page, msg, err := loadPage(link)
 	if err != nil {
 		return "", err
 	}
-	body, msg := parseResp(resp)
-	if len(msg) != 0 {
-		return "", err
+	defer page.Close()
+
+	if msg != "" {
+		// there shouldn't be any notification
+		return "", fmt.Errorf(msg)
 	}
 
 	// check if current user sesion is logged in
-	if handle := findHandle(body); len(handle) != 0 {
-		return handle, nil
+	if elm := page.MustElements(selCSSHandle).First(); elm != nil {
+		return clean(elm.MustText()), nil
+	}
+	// otherwise, login
+
+	// check if username/password are valid
+	if usr == "" || passwd == "" {
+		return "", errInvalidCredentials
 	}
 
-	// hidden form data
-	csrf := findCsrf(body)
-	ftaa := genRandomString(18)
-	bfaa := genRandomString(32)
+	page.MustElement("#handleOrEmail").Input(usr)
+	page.MustElement("#password").Input(passwd)
+	if page.MustElement("#remember").MustProperty("checked").Bool() == false {
+		page.MustElement("#remember").MustClick()
+	}
+	page.MustElement(".submit").
+		MustClick().WaitInvisible()
 
-	resp, err = SessCln.PostForm(link, url.Values{
-		"csrf_token":    {csrf},
-		"action":        {"enter"},
-		"ftaa":          {ftaa},
-		"bfaa":          {bfaa},
-		"handleOrEmail": {usr},
-		"password":      {passwd},
-		"_tta":          {"176"},
-		"remember":      {"on"},
-	})
+	page.MustWaitLoad()
+	if page.MustHas(selCSSHandle) {
+		elm := page.MustElement(selCSSHandle)
+		return clean(elm.MustText()), nil
+	}
+
+	return "", errInvalidCredentials
+}
+
+func logout() error {
+	page, msg, err := loadPage(hostURL)
 	if err != nil {
-		return "", err
+		return err
+	}
+	defer page.Close()
+
+	if msg != "" {
+		return fmt.Errorf(msg)
 	}
 
-	// the only message possible is Welcome, handle!
-	body, _ = parseResp(resp)
-	handle := findHandle(body)
-	if len(handle) == 0 {
-		// login failed
-		return "", ErrInvalidCredentials
+	if page.MustHasR("a", "Logout") {
+		page.MustElementR("a", "Logout").
+			MustClick().WaitInvisible()
+		page.MustWaitLoad()
 	}
-	return handle, nil
+	return nil
 }
