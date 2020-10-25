@@ -20,7 +20,9 @@ func TestMain(m *testing.M) {
 	// Load local .env file.
 	godotenv.Load()
 
-	Start(true, "", "google-chrome")
+	_, browserHeadless := os.LookupEnv("BROWSER_HEADLESS")
+	browserBin := os.Getenv("BROWSER_BINARY")
+	Start(browserHeadless, "", browserBin)
 
 	if _, err := login(getLoginCredentials()); err != nil {
 		fmt.Println("Login failed:", err)
