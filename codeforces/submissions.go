@@ -24,7 +24,7 @@ type (
 	}
 )
 
-// SubmissionsPage returns link to user submissions in contest.
+// SubmissionsPage returns link to user submissions page.
 func (arg Args) SubmissionsPage(handle string) (link string, err error) {
 	// Contest not specified.
 	if arg.Contest == "" {
@@ -64,7 +64,7 @@ func (arg Args) SubmissionsPage(handle string) (link string, err error) {
 	return
 }
 
-// SourceCodePage returns link to solution submission.
+// SourceCodePage returns link to solution submission code.
 func (sub Submission) SourceCodePage() (link string, err error) {
 	if sub.ID == "" || sub.Arg.Contest == "" {
 		return "", ErrInvalidSpecifier
@@ -84,15 +84,15 @@ func (sub Submission) SourceCodePage() (link string, err error) {
 	return
 }
 
-// GetSubmissions parses and returns all submissions data in specified args
-// of given user. Fetches details of all submissions of handle if args is nil.
+// GetSubmissions returns submissions metadata of given user.
+// If contest is not specified, returns all submissions of user.
 //
-// If handle is not set, fetches submissions of currently active user session.
-// Due to a bug on codeforces, submissions in groups in this mode are not supported.
+// Due to a bug on codeforces, fetching submissions in group contests
+// are not supported, when the contest isn't specified.
 //
-// Set 'pageCount' to the maximum number of pages (50 rows per page) you want to be scraped.
-// If 'pageCount' > 1, channel will not wait until all verdicts are declared, and will
-// close once submission data from all specified pages is extracted.
+// Set pageCount to maximum number of pages to parse. Each page consists of 50
+// rows of data. If pageCount is 1, the returned channel will keep returning page
+// data, till all verdicts of submissions in the page are declared.
 func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submission, error) {
 	link, err := arg.SubmissionsPage(handle)
 	if err != nil {
@@ -147,11 +147,7 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 	return chanSubmissions, nil
 }
 
-// GetSourceCode parses and returns source code of submission.
-// Has an auto sleep cycle of 4 seconds to handle http error
-// "Too Many Requests".
-//
-// Due to a bug on codeforces, groups are not supported.
+// GetSourceCode returns submission code of given submission.
 func (sub Submission) GetSourceCode() (string, error) {
 
 	link, err := sub.SourceCodePage()
@@ -175,7 +171,7 @@ func (sub Submission) GetSourceCode() (string, error) {
 	return source, nil
 }
 
-// parse specified submissions from current page
+// parse specified submissions from current page.
 func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
 	submissions := make([]Submission, 0)
 	isDone := true

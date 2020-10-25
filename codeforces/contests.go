@@ -34,7 +34,7 @@ type (
 	}
 )
 
-// Contest registration status of current session.
+// Contest registration status.
 const (
 	RegistrationClosed    = 0
 	RegistrationOpen      = 1
@@ -66,7 +66,7 @@ func (arg Args) CountdownPage() (link string, err error) {
 	return
 }
 
-// ContestsPage returns link to all contests page (group/gym/contest).
+// ContestsPage returns link to contests page of group/gym/contest.
 func (arg Args) ContestsPage() (link string, err error) {
 
 	switch arg.Class {
@@ -126,7 +126,8 @@ func (arg Args) DashboardPage() (link string, err error) {
 	return
 }
 
-// RegisterPage returns link to registration (not virtual reg) in contest.
+// RegisterPage returns link to registration (not virtual contest registration)
+// in contest.
 func (arg Args) RegisterPage() (link string, err error) {
 	if arg.Contest == "" || arg.Class != ClassContest {
 		return "", ErrInvalidSpecifier
@@ -138,9 +139,11 @@ func (arg Args) RegisterPage() (link string, err error) {
 	return
 }
 
-// GetCountdown parses and returns duration type for countdown
-// in specified contest to end. If countdown has already ended,
-// returns 0.
+// GetCountdown returns the time before the given contest begins.
+// If contest has already started, returns 0.
+//
+// Use this function instead of GetContests to get countdown,
+// as it supports returning countdown of virtual contests too.
 func (arg Args) GetCountdown() (time.Duration, error) {
 	// chan has not been implemented here since,
 	// countdown is updated on reload,
@@ -174,13 +177,12 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 	return dur, nil
 }
 
-// GetContests extracts contest/gym/group contests data based
-// on specified data in Args. Expects arg.Class to be configured
-// to fetch respective contest details.
+// GetContests returns metadata of the given contest.
 //
-// Set 'pageCount' to the maximum number of pages (100 rows in each page,
-// excluding the first page, which may contain more rows of upcoming contests)
-// you want to be returned.
+// Set 'pageCount' to the maximum number of pages to parse.
+// When parsing individual contests, set pageCount to 1.
+// Each page consists of 100 rows of data, except the first page,
+// which may contain additional upcoming contests data.
 func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 	link, err := arg.ContestsPage()
 	if err != nil {
@@ -339,8 +341,11 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 	return chanContests, nil
 }
 
-// GetDashboard parses and returns useful info from
-// contest dashboard page.
+// GetDashboard returns in depth contest metadata from
+// the contest dashboard page.
+//
+// Data returned by this function is user session specific,
+// as user interaction in the contest is parsed and returned.
 func (arg Args) GetDashboard() (Dashboard, error) {
 
 	link, err := arg.DashboardPage()

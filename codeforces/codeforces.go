@@ -13,7 +13,8 @@ import (
 
 type (
 	// Args holds specifier details parsed by
-	// Parse() function.
+	// Parse() function. All methods use this
+	// at the core.
 	Args struct {
 		Contest string
 		Problem string
@@ -29,7 +30,7 @@ const (
 	ClassGym     = "gym"
 )
 
-// Set errors returned by library.
+// Errors returned by library.
 var (
 	ErrInvalidSpecifier   = fmt.Errorf("invalid specifier data")
 	errInvalidCredentials = fmt.Errorf("invalid login credentials")
@@ -114,7 +115,7 @@ func (arg Args) String() (str string) {
 	return strings.Join(strings.Fields(str), " ")
 }
 
-// loginPage returns link to login page
+// loginPage returns link to login page.
 func loginPage() string {
 	return fmt.Sprintf("%v/enter", hostURL)
 }
@@ -177,12 +178,10 @@ func Parse(str string) (Args, error) {
 }
 
 // login tries logging into codeforces using credentials passed.
-// Checks if any active session exists (in SessCln) before logging in.
-// If you wish to overwrite currently logged in session, set cookies
-// of SessCln to nil before logging in.
+// Checks if any active session exists before logging in.
 //
-// If login is successful, returns user handle of now logged in session.
-// Otherwise, if login fails, returns ErrInvalidCredentials as error.
+// If login is successful, returns user handle of logged in session.
+// Otherwise, if login fails, returns ErrInvalidCredentials.
 //
 // By default, option 'remember me' is checked, ensuring the session
 // has expiry period of one month from date of last login.

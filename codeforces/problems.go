@@ -10,13 +10,13 @@ import (
 )
 
 type (
-	// SampleTest maps sample input to sample output.
+	// SampleTest holds sample test case data.
 	SampleTest struct {
 		Input  string
 		Output string
 	}
 
-	// Problem data is parsed to this struct.
+	// Problem holds data of problem.
 	Problem struct {
 		Name        string
 		TimeLimit   string
@@ -69,16 +69,15 @@ func (arg Args) ProblemsPage() (link string, err error) {
 	return
 }
 
-// GetProblems parses problem(s) details along with sample tests.
-// If problem field is not specified, extracts details of all problems
-// in the contest.
+// GetProblems returns problem(s) meta data, along with sample tests.
 //
-// In some older contests, complete problemset page is not supported.
-// Preferably fallback to parsing individual problems if entire parsing
-// fails.
+// If the problem is not specified, returns data of all problems in
+// the specified contest. In some older contests, the complete
+// problemset page is not present. In such cases, fallback to running
+// GetProblems() for each problem in the contest.
 //
-// Doesn't fetch 'SolveStatus' and 'SolveCount' of problem.
-// Use GetDashboard() to fetch these info fields.
+// SolveStatus and SolveCount are not parsed by this.
+// Use GetDashboard() if you require these fields.
 func (arg Args) GetProblems() ([]Problem, error) {
 
 	link, err := arg.ProblemsPage()
@@ -130,12 +129,13 @@ func (arg Args) GetProblems() ([]Problem, error) {
 	return probs, nil
 }
 
-// SubmitSolution submits source code to specified problem.
-// langName is codeforces specified name of language to submit in.
-// file is the submission code file to upload.
+// SubmitSolution submits given file to the judging server,
+// and returns a channel on a successful submission.
+// The channel contains the live status of the submission.
+// View GetSubmissions() for more details on the returned channel.
 //
-// If submitted successfully, returns a chan updating verdict
-// of the current submission. View GetSubmissions() for more details.
+// langName is the codeforces configured language to use. See the
+// variable map LanguageID for the list of supported languages.
 func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission, error) {
 	// problem not specified, return invalid
 	if arg.Problem == "" {
