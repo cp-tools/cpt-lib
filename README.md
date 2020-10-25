@@ -1,4 +1,5 @@
 # cpt-lib
+
 [![Coverage Status](https://coveralls.io/repos/github/cp-tools/cpt-lib/badge.svg)](https://coveralls.io/github/cp-tools/cpt-lib) [![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib) [![Go Report Card](https://goreportcard.com/badge/github.com/cp-tools/cpt-lib)](https://goreportcard.com/report/github.com/cp-tools/cpt-lib) ![GitHub](https://img.shields.io/github/license/cp-tools/cpt-lib)
 
 Short for competitive programming tools library, `cpt-lib` is a collection of API wrappers to request and upload data to various competitive programming websites, enabling the extraction and processing of a myriad of data with relative ease.
@@ -26,18 +27,16 @@ cpt-lib is a library that uses browser automation, to extract, process and autom
 - Extracting public details of contests.
 - Fetching submissions and its solution code.
 
-Obviously, some websites have more features, while some have only a subset of these. To know all available functions, refer to the respective package documentation.
-
-
+Obviously, some websites have more features, while some have only a subset of these. To know all available functions, refer to the respective package documentation (refer below).
 
 # Supported Websites
 
-| Website                              | Support                        | Status            |                                                              |
-| ------------------------------------ | ------------------------------ | ----------------- | ------------------------------------------------------------ |
-| [CodeForces](https://codeforces.com) | :star::star::star::star::star: | Is supported      | [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/cp-tools/cpt-lib/Build%20and%20Test%20(codeforces)?label=Tests%20%28codeforces%29)](https://github.com/cp-tools/cpt-lib/actions)[![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces) |
-| [Atcoder](https://atcoder.jp)        | :star::star::star::star:       | Under development |                                                              |
-| [USACO](https://usaco.org)           | :star::star::star:             | Under development |                                                              |
-| [Codechef](https://codechef.com)     | :star::star::star:             | Future milestone  |                                                              |
+| Website                              | Support                        | Status           |                                                              |
+| ------------------------------------ | ------------------------------ | ---------------- | ------------------------------------------------------------ |
+| [CodeForces](https://codeforces.com) | :star::star::star::star::star: | Is supported     | [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/cp-tools/cpt-lib/Build%20and%20Test%20(codeforces)?label=Tests%20%28codeforces%29)](https://github.com/cp-tools/cpt-lib/actions)[![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces) |
+| [Atcoder](https://atcoder.jp)        | :star::star::star::star:       | In development   |                                                              |
+| [USACO](https://usaco.org)           | :star::star::star:             | In development   |                                                              |
+| [Codechef](https://codechef.com)     | :star::star::star:             | Future milestone |                                                              |
 
 #### Legend
 
@@ -51,14 +50,14 @@ Obviously, some websites have more features, while some have only a subset of th
 
 - **Status**:
 
-  - Is supported - Package for website available in the latest release.
-  - Under development - Website support in develop or feature branch.
+  - Is supported - Website support available on master branch.
+  - In development - Website support is in development branch.
   - Future milestone - Development underway in the near future.
 
 # Getting Started
 
 *For complete usage examples, view tests of the corresponding packages.*
-*Refer`godoc` badges above for corresponding documentation.*
+*Refer `godoc` badges above for corresponding documentation.*
 
 ## Installation
 
@@ -93,6 +92,8 @@ func main(){
     // Do parsing here...
 }
 ```
+
+
 
 At the root, each package implements a `Args` type. This holds metadata of a contest/problem group, on which the methods are provided. Instantiating a variable of this type is done using the provided `Parse()` function, which casts the provided specifiers to the variable.
 
@@ -148,33 +149,31 @@ The functioning of the the browser automation is as follows.
 - Starts the specified browser, with the specified user data directory.
 - Creates another new browser instance, with a **different** user data directory.
 - Copies cookies data from the first browser instance to the second browser instance.
-- Closes the former browser, and uses the latter browser profile to access various data.
+- Closes the former browser, and uses the latter browser profile to access the websites.
 
 This ensures nothing (history, cookies, bookmarks etc) of your specified user profile are modified.
-However, **use unofficial versions of this library with extreme caution**, as malicious code can be used to extract all login details and private credentials from your browser.
+
+However, **use unofficial versions of this library with extreme caution**, as malicious code can be used to extract any private credentials stored on your browser.
 
 ### How do I make this library work in other languages?
 
 Currently, there is no official support for the same.
 
-However, there are some future plans:
+However, there are some future plans, which are as follows (sorted by priority):
 
-- An online REST API to fetch data of **public** contests.
 - A cross platform command line executable.
-- *Experimental:* Porting the project base to JavaScript code.
-- 
-Expect option two to be available in the near future.
+- An online REST API to return data of **public** contests.
 
 ### What are the benefits of using browser automation over fetching web pages with GET requests?
 
 Here are the major plus sides of using browser automation over source code fetching:
 
-1. Uses logged in session of specified browser, doing away with management of logged in sessions.
+1. Uses logged in session of specified browser, doing away with management of login sessions.
 2. Improved security since no credentials/login information is given away.
 3. Support for websites with dynamic loading of data (done through JavaScript).
 4. No major difference in speed between the two methods (view test results for stats).
-5. Support for monitoring and returning web socket controlled data (think submission status).
-6. Anything that can be done manually, can be automated with automated browsers.
+5. Support for monitoring and returning web socket controlled data (like submission status).
+6. Anything that can be done manually, can be done easily with automated browsers.
 
 And thus, the pros of this method clearly outweigh the cons, making this the best method.
 
@@ -184,4 +183,4 @@ However, if you wish to fallback to the older method, you may use the *archived*
 ```go
 go get -u github.com/cp-tools/cpt-lib/v1
 ```
-Note that, there will not be any updates or support for this and other older versions.
+Note that, there will not be any future updates or support for this or other older versions.
