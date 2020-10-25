@@ -1,5 +1,5 @@
 # cpt-lib
-[![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib) [![Go Report Card](https://goreportcard.com/badge/github.com/cp-tools/cpt-lib)](https://goreportcard.com/report/github.com/cp-tools/cpt-lib) ![GitHub](https://img.shields.io/github/license/cp-tools/cpt-lib)
+[![Coverage Status](https://coveralls.io/repos/github/cp-tools/cpt-lib/badge.svg)](https://coveralls.io/github/cp-tools/cpt-lib) [![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib) [![Go Report Card](https://goreportcard.com/badge/github.com/cp-tools/cpt-lib)](https://goreportcard.com/report/github.com/cp-tools/cpt-lib) ![GitHub](https://img.shields.io/github/license/cp-tools/cpt-lib)
 
 Short for competitive programming tools library, `cpt-lib` is a collection of API wrappers to request and upload data to various competitive programming websites, enabling the extraction and processing of a myriad of data with relative ease.
 
@@ -34,7 +34,7 @@ Obviously, some websites have more features, while some have only a subset of th
 
 | Website                              | Support                        | Status            |                                                              |
 | ------------------------------------ | ------------------------------ | ----------------- | ------------------------------------------------------------ |
-| [CodeForces](https://codeforces.com) | :star::star::star::star::star: | Is supported      | [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/cp-tools/cpt-lib/Build%20and%20Test%20(codeforces)?label=Tests%20%28codeforces%29)](https://github.com/cp-tools/cpt-lib/actions) [![Coverage Status](https://coveralls.io/repos/github/cp-tools/cpt-lib/badge.svg)](https://coveralls.io/github/cp-tools/cpt-lib?branch=add-codeforces-support) [![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces) |
+| [CodeForces](https://codeforces.com) | :star::star::star::star::star: | Is supported      | [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/cp-tools/cpt-lib/Build%20and%20Test%20(codeforces)?label=Tests%20%28codeforces%29)](https://github.com/cp-tools/cpt-lib/actions)[![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces) |
 | [Atcoder](https://atcoder.jp)        | :star::star::star::star:       | Under development |                                                              |
 | [USACO](https://usaco.org)           | :star::star::star:             | Under development |                                                              |
 | [Codechef](https://codechef.com)     | :star::star::star:             | Future milestone  |                                                              |
@@ -54,9 +54,6 @@ Obviously, some websites have more features, while some have only a subset of th
   - Is supported - Package for website available in the latest release.
   - Under development - Website support in develop or feature branch.
   - Future milestone - Development underway in the near future.
-
-
-
 
 # Getting Started
 
@@ -87,57 +84,50 @@ To use the methods provided by the library, the automated browser must be initia
 
 ```go
 func main(){
-	// Initialization parameters.
-	inHeadless := true
-  browser := "google-chrome"
-  browserProfile := "/home/<username>/.config/google-chrome/"
-	codeforces.Start(inHeadless, browserProfile, browser)
-	
-	// Do parsing here...
+    // Initialization parameters.
+    inHeadless := true
+    browser := "google-chrome"
+    browserProfile := "/home/<username>/.config/google-chrome/"
+    codeforces.Start(inHeadless, browserProfile, browser)
+
+    // Do parsing here...
 }
 ```
-
-
 
 At the root, each package implements a `Args` type. This holds metadata of a contest/problem group, on which the methods are provided. Instantiating a variable of this type is done using the provided `Parse()` function, which casts the provided specifiers to the variable.
 
 Specifiers supported by `Parse()` varies between websites, but URLs to the contest/problem are supported by all packages.
 
 ```go
-arg, err := codeforces.Parse("https://codeforces.com/contest/1234/problem/c1")
+arg, err := codeforces.Parse("codeforces.com/contest/1234/problem/c")
 if err != nil{
-	panic(err)
+    panic(err)
 }
 
 // Run methods on 'arg' next...
 ```
 
- 
-
-The returned variable can then be used to execute the different provided methods, using its metadata.
-An example of fetching sample tests of the problem (specified in the previous snippet) is as follows:
+The returned variable can then be used to execute the different provided methods, using its metadata. An example of fetching sample tests of the problem (specified in the previous snippet) is as follows:
 
 ```go
 problems, err := arg.GetProblems()
 if err != nil{
-	panic(err)
+    panic(err)
 }
 
 // Display information of fetched problems.
 for _, problem := range problems {
-	fmt.Println("Problem Name:", problem.Name)
-  fmt.Println("Time limit:", problem.TimeLimit)
-	fmt.Println("Number of sample tests:", len(problem.SampleTests))
+    fmt.Println("Problem Name:", problem.Name)
+    fmt.Println("Time limit:", problem.TimeLimit)
+    fmt.Println("Number of sample tests:", len(problem.SampleTests))
 }
 ```
-
-
 
 # FAQ
 
 ### Which browsers are supported?
 
-As the project directly uses [rod](https://github.com/go-rod/rod) to control the automated browser, all browsers supported by it are supported by this package. Nevertheless, here the list of browser support:
+As the project directly uses [rod](https://github.com/go-rod/rod) to control the automated browser, all browsers supported by it are supported by this package. Nevertheless, here is the list of browser support:
 
 - **Supported browsers**:
   - Google chrome (tested)
@@ -148,8 +138,6 @@ As the project directly uses [rod](https://github.com/go-rod/rod) to control the
   - Safari
   - Opera
   - Internet Explorer
-
-
 
 ### Is sensitive data of my browser at risk? 
 
@@ -163,22 +151,19 @@ The functioning of the the browser automation is as follows.
 - Closes the former browser, and uses the latter browser profile to access various data.
 
 This ensures nothing (history, cookies, bookmarks etc) of your specified user profile are modified.
-
-
+However, **use unofficial versions of this library with extreme caution**, as malicious code can be used to extract all login details and private credentials from your browser.
 
 ### How do I make this library work in other languages?
 
 Currently, there is no official support for the same.
 
-However, there are future plans:
+However, there are some future plans:
 
 - An online REST API to fetch data of **public** contests.
 - A cross platform command line executable.
 - *Experimental:* Porting the project base to JavaScript code.
-
+- 
 Expect option two to be available in the near future.
-
-
 
 ### What are the benefits of using browser automation over fetching web pages with GET requests?
 
@@ -196,9 +181,7 @@ And thus, the pros of this method clearly outweigh the cons, making this the bes
 ---
 
 However, if you wish to fallback to the older method, you may use the *archived* version using:
-
 ```go
 go get -u github.com/cp-tools/cpt-lib/v1
 ```
-
-Note that, there will not be any updates or support for this (and older) version.
+Note that, there will not be any updates or support for this and other older versions.
