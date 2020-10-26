@@ -371,7 +371,11 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 	dashboard.Name = clean(doc.Find(".rtable th").Text())
 	// extract countdown to contest end
 	if true {
-		str := clean(doc.Find(".countdown").Text())
+		str := doc.Find("span.countdown>span").AttrOr("title", "")
+		if len(str) == 0 {
+			str = doc.Find("span.countdown").Text()
+		}
+
 		var h, m, s int
 		fmt.Sscanf(str, "%d:%d:%d", &h, &m, &s)
 		countdown := time.Duration(h*3600+m*60+s) * time.Second
