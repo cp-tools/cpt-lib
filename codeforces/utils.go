@@ -61,6 +61,10 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
 	}
 
 	if elm.MustMatches(selCSSNotif) {
+		// Wait till page loads. This is to have the notification registered,
+		// so that it won't pop up in the next page parsed.
+		// Some issue with codeforces website.
+		page.MustWaitLoad()
 		return page, clean(elm.MustText()), nil
 	}
 	return page, "", nil
