@@ -45,10 +45,18 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
 	elm := page.MustElement(selMatch...)
 
 	if page.MustInfo().URL != link {
-		page.WaitLoad()
-		if page.MustHas(selCSSNotif) {
+		// Race to select notif element (or page load).
+		loaded, found := make(chan bool), make(chan bool)
+		go func() { page.MustWaitLoad(); close(loaded) }()
+		go func() { page.Element(selCSSNotif); close(found) }()
+
+		select {
+		case <-found:
 			// There was a redirect (with an error message).
 			elm = page.MustElement(selCSSNotif)
+		case <-loaded:
+			// No error message found
+			break
 		}
 	}
 
@@ -169,4 +177,20 @@ func (arg *Args) setContestClass() {
 			arg.Class = ClassGym
 		}
 	}
+}
+
+func waitTillAllRowsLoaded(page *rod.Page, sel string) {
+	prevCount, stableCount := -1, 0
+	for stableCount < 5 {
+		time.Sleep(time.Millisecond * 150)
+
+		count := len(page.MustElements(sel))
+		if count == prevCount {
+			stableCount++
+		} else {
+			prevCount = count
+			stableCount = 0
+		}
+	}
+	return
 }
