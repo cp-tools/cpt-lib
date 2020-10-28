@@ -54,10 +54,6 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
 		case <-found:
 			// There was a redirect (with an error message).
 			elm = page.MustElement(selCSSNotif)
-			// Register the notification, so that the next
-			// page does not reflect the error.
-			// So confusing logic with codechef website.
-			time.Sleep(time.Millisecond * 200)
 		case <-loaded:
 			// No error message found
 			break
