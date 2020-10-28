@@ -178,19 +178,3 @@ func (arg *Args) setContestClass() {
 		}
 	}
 }
-
-func waitTillAllRowsLoaded(page *rod.Page, sel string) {
-	prevCount, stableCount := -1, 0
-	for stableCount < 5 {
-		time.Sleep(time.Millisecond * 150)
-
-		count := len(page.MustElements(sel))
-		if count == prevCount {
-			stableCount++
-		} else {
-			prevCount = count
-			stableCount = 0
-		}
-	}
-	return
-}
