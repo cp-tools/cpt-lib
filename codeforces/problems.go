@@ -85,7 +85,7 @@ func (arg Args) GetProblems() ([]Problem, error) {
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link)
+	page, msg, err := loadPage(link, `.problemindexholder`)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link)
+	page, msg, err := loadPage(link, selCSSFooter)
 	if err != nil {
 		return nil, err
 	}
@@ -188,16 +188,15 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 	// do the submitting here! (really simple)
 	page.MustElement(`select[name="programTypeId"]`).MustSelect(langName)
 	page.MustElement(`input[name="sourceFile"]`).MustSetFiles(file)
-	page.MustElement(`input.submit`).MustClick().WaitInvisible()
-	page.MustWaitLoad()
+	page.MustElement(`input.submit`).MustClick()
 
-	if page.MustHas(selCSSError) {
-		defer page.Close()
+	elm := page.MustElement(selCSSError, `tr[data-submission-id]`)
+
+	if elm.MustMatches(selCSSError) {
 		// static error message (exact submission done before)
-		elm := page.MustElement(selCSSError)
+		defer page.Close()
 		msg := clean(elm.MustText())
 		return nil, fmt.Errorf(msg)
-
 	}
 
 	// return live progress of submission

@@ -458,13 +458,6 @@ func TestArgs_GetContests(t *testing.T) {
 			want:    nil,
 			wantErr: true,
 		},
-		{
-			name:    "Test #9",
-			arg:     Args{"", "", "group", "sSif4APjXp"},
-			args:    args{2},
-			want:    []Contest{},
-			wantErr: false,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

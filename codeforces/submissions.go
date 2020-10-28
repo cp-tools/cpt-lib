@@ -99,7 +99,7 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link)
+	page, msg, err := loadPage(link, `tr[data-submission-id]`)
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +130,8 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		} else {
 			// iterate till no more valid required pages left
 			for ; pageCount > 0; pageCount-- {
+				page.WaitLoad()
+
 				submissions, _ := arg.parseSubmissions(page)
 				chanSubmissions <- submissions
 
@@ -138,9 +140,9 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 					break
 				}
 				// click navigation button and wait till loads
-				page.MustElementR(".pagination li a", "→").
-					MustClick().WaitInvisible()
-				page.MustWaitLoad()
+				elm := page.MustElementR(".pagination li a", "→")
+				elm.MustClick().WaitInvisible()
+				page.MustElement(`tr[data-submission-id]`)
 			}
 		}
 	}()
@@ -155,7 +157,7 @@ func (sub Submission) GetSourceCode() (string, error) {
 		return "", err
 	}
 
-	page, msg, err := loadPage(link)
+	page, msg, err := loadPage(link, `#program-source-text`)
 	if err != nil {
 		return "", err
 	}

@@ -187,7 +187,7 @@ func Parse(str string) (Args, error) {
 // has expiry period of one month from date of last login.
 func login(usr, passwd string) (string, error) {
 	link := loginPage()
-	page, msg, err := loadPage(link)
+	page, msg, err := loadPage(link, selCSSFooter)
 	if err != nil {
 		return "", err
 	}
@@ -214,20 +214,18 @@ func login(usr, passwd string) (string, error) {
 	if page.MustElement("#remember").MustProperty("checked").Bool() == false {
 		page.MustElement("#remember").MustClick()
 	}
-	page.MustElement(".submit").
-		MustClick().WaitInvisible()
+	page.MustElement(".submit").MustClick()
 
-	page.MustWaitLoad()
-	if page.MustHas(selCSSHandle) {
-		elm := page.MustElement(selCSSHandle)
-		return clean(elm.MustText()), nil
+	page.MustElement(selCSSError, selCSSHandle)
+	if elm := page.MustElements(selCSSHandle); !elm.Empty() {
+		return clean(elm.First().MustText()), nil
 	}
 
 	return "", errInvalidCredentials
 }
 
 func logout() error {
-	page, msg, err := loadPage(hostURL)
+	page, msg, err := loadPage(hostURL, selCSSFooter)
 	if err != nil {
 		return err
 	}
@@ -238,9 +236,9 @@ func logout() error {
 	}
 
 	if page.MustHasR("a", "Logout") {
-		page.MustElementR("a", "Logout").
-			MustClick().WaitInvisible()
-		page.MustWaitLoad()
+		page.MustElementR("a", "Logout").MustClick()
+		// page gives a notification on logout
+		page.Element(selCSSNotif)
 	}
 	return nil
 }
