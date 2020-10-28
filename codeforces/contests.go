@@ -200,7 +200,7 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 	}
 
 	// Wait till alls rows are loaded.
-	waitTillAllRowsLoaded(page, `tr[data-contestid]`)
+	page.MustWaitLoad()
 
 	chanContests := make(chan []Contest, 5)
 	go func() {
@@ -339,7 +339,7 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 			page.MustElementR(`.pagination li a`, "→").MustClick().WaitInvisible()
 			// Wait till table completely loads all rows.
 			page.MustElement(`tr[data-contestid]`)
-			waitTillAllRowsLoaded(page, `tr[data-contestid]`)
+			page.MustWaitLoad()
 		}
 	}()
 	return chanContests, nil

@@ -109,7 +109,7 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		return nil, fmt.Errorf(msg)
 	}
 	// Wait till alls rows are loaded.
-	waitTillAllRowsLoaded(page, `tr[data-submission-id]`)
+	page.MustWaitLoad()
 
 	// @todo Add support for excluding unofficial submissions
 
@@ -143,7 +143,7 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 				page.MustElementR(".pagination li a", "→").MustClick().WaitInvisible()
 				// Wait till all rows of table are loaded.
 				page.MustElement(`tr[data-submission-id]`)
-				waitTillAllRowsLoaded(page, `tr[data-submission-id]`)
+				page.MustWaitLoad()
 			}
 		}
 	}()
