@@ -20,7 +20,7 @@ var (
 	selCSSError  = `.error`
 )
 
-func loadPage(link string) (*rod.Page, string, error) {
+func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
 	// Load page and return error (if any).
 	page, err := Browser.Page(proto.TargetCreateTarget{URL: link})
 	if err != nil {
@@ -41,12 +41,32 @@ func loadPage(link string) (*rod.Page, string, error) {
 	})
 	go router.Run()
 
-	page.MustWaitLoad()
-	if page.MustHas(selCSSNotif) && page.MustInfo().URL != link {
-		elm := page.MustElement(selCSSNotif)
-		return page, clean(elm.MustText()), nil
+	selMatch = append([]string{selCSSNotif}, selMatch...)
+	elm := page.MustElement(selMatch...)
+
+	if page.MustInfo().URL != link {
+		// Race to select notif element (or page load).
+		loaded, found := make(chan bool), make(chan bool)
+		go func() { page.MustWaitLoad(); close(loaded) }()
+		go func() { page.Element(selCSSNotif); close(found) }()
+
+		select {
+		case <-found:
+			// There was a redirect (with an error message).
+			elm = page.MustElement(selCSSNotif)
+		case <-loaded:
+			// No error message found
+			break
+		}
 	}
 
+	if elm.MustMatches(selCSSNotif) {
+		// Wait till page loads. This is to have the notification registered,
+		// so that it won't pop up in the next page parsed.
+		// Some issue with codeforces website.
+		page.MustWaitLoad()
+		return page, clean(elm.MustText()), nil
+	}
 	return page, "", nil
 }
 

@@ -99,7 +99,7 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link)
+	page, msg, err := loadPage(link, `tr[data-submission-id]`)
 	if err != nil {
 		return nil, err
 	}
@@ -108,6 +108,8 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		defer page.Close()
 		return nil, fmt.Errorf(msg)
 	}
+	// Wait till alls rows are loaded.
+	page.MustWaitLoad()
 
 	// @todo Add support for excluding unofficial submissions
 
@@ -138,8 +140,9 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 					break
 				}
 				// click navigation button and wait till loads
-				page.MustElementR(".pagination li a", "→").
-					MustClick().WaitInvisible()
+				page.MustElementR(".pagination li a", "→").MustClick().WaitInvisible()
+				// Wait till all rows of table are loaded.
+				page.MustElement(`tr[data-submission-id]`)
 				page.MustWaitLoad()
 			}
 		}
@@ -155,7 +158,7 @@ func (sub Submission) GetSourceCode() (string, error) {
 		return "", err
 	}
 
-	page, msg, err := loadPage(link)
+	page, msg, err := loadPage(link, `#program-source-text`)
 	if err != nil {
 		return "", err
 	}
