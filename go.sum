@@ -2,8 +2,8 @@ github.com/PuerkitoBio/goquery v1.6.0 h1:j7taAbelrdcsOlGeMenZxc2AWXD5fieT1/znArd
 github.com/PuerkitoBio/goquery v1.6.0/go.mod h1:GsLWisAFVj4WgDibEWF4pvYnkVQBpKBKeU+7zCJoLcc=
 github.com/andybalholm/cascadia v1.1.0 h1:BuuO6sSfQNFRu1LppgbD25Hr2vLYW25JvxHs5zzsLTo=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
-github.com/go-rod/rod v0.76.1 h1:oIwQMIJ+xsMErQbSyaG21UW7T8ZpXu/46OogLAcqCZU=
-github.com/go-rod/rod v0.76.1/go.mod h1:XEc4dRYDxlKw+SFG3ZpWTZ8k4vosgg5IDUHKYPMzVSI=
+github.com/go-rod/rod v0.77.1 h1:e6QK8KyUaLRswDUDHxW526nDPaP9EvRaaiSce9qm55M=
+github.com/go-rod/rod v0.77.1/go.mod h1:XEc4dRYDxlKw+SFG3ZpWTZ8k4vosgg5IDUHKYPMzVSI=
 github.com/joho/godotenv v1.3.0 h1:Zjp+RcGpHhGlrMbJzXTrZZPrWj+1vfm90La1wgB6Bhc=
 github.com/joho/godotenv v1.3.0/go.mod h1:7hK45KPybAkOC6peb+G5yklZfMxEjkZhHbwpqxOKXbg=
 github.com/ysmood/goob v0.3.0 h1:XZ51cZJ4W3WCoCiUktixzMIQF86W7G5VFL4QQ/Q2uS0=
