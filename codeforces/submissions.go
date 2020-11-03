@@ -2,6 +2,7 @@ package codeforces
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -11,17 +12,36 @@ import (
 type (
 	// Submission holds submission data.
 	Submission struct {
-		ID        string
-		When      time.Time
-		Who       string
-		Problem   string
-		Language  string
-		Verdict   string
-		Time      string
-		Memory    string
-		IsJudging bool
-		Arg       Args
+		ID            string
+		When          time.Time
+		Who           string
+		Problem       string
+		Language      string
+		Verdict       string
+		VerdictStatus int
+		Time          string
+		Memory        string
+		IsJudging     bool
+		Arg           Args
 	}
+)
+
+// Submissions verdict status.
+const (
+	VerdictAC = 1 // Accepted
+
+	VerdictWA  = 2 // Wrong Answer
+	VerdictPE  = 3 // Presentation Error
+	VerdictRTE = 4 // Run Time Error
+
+	VerdictCE  = 5 // Compilation Error
+	VerdictTLE = 6 // Time Limit Exceeded
+	VerdictMLE = 7 // Memory Limit Exceeded
+	VerdictILE = 8 // Idleness Limit Exceeded
+
+	VerdictDOJ  = 9  // Denial Of Judgement
+	VerdictSkip = 10 // Skipped
+	VerdictHack = 11 // Hacked
 )
 
 // SubmissionsPage returns link to user submissions page.
@@ -214,14 +234,36 @@ func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
 				submissionRow.Language = language
 
 			case 5:
-				isJudging := cell.AttrOr("waiting", "") == "true"
-				submissionRow.IsJudging = isJudging
-				if isJudging == true {
-					isDone = false
-				}
-
 				verdict := clean(cell.Text())
 				submissionRow.Verdict = verdict
+
+				submissionRow.IsJudging = false
+				if strings.Contains(verdict, "Accepted") {
+					submissionRow.VerdictStatus = VerdictAC
+				} else if strings.Contains(verdict, "Wrong answer") {
+					submissionRow.VerdictStatus = VerdictWA
+				} else if strings.Contains(verdict, "Presentation error") {
+					submissionRow.VerdictStatus = VerdictPE
+				} else if strings.Contains(verdict, "Runtime error") {
+					submissionRow.VerdictStatus = VerdictRTE
+				} else if strings.Contains(verdict, "Compilation error") {
+					submissionRow.VerdictStatus = VerdictCE
+				} else if strings.Contains(verdict, "Time limit exceeded") {
+					submissionRow.VerdictStatus = VerdictTLE
+				} else if strings.Contains(verdict, "Memory limit exceeded") {
+					submissionRow.VerdictStatus = VerdictMLE
+				} else if strings.Contains(verdict, "Idleness limit exceeded") {
+					submissionRow.VerdictStatus = VerdictILE
+				} else if strings.Contains(verdict, "Denial of judgement") {
+					submissionRow.VerdictStatus = VerdictDOJ
+				} else if strings.Contains(verdict, "Skipped") {
+					submissionRow.VerdictStatus = VerdictSkip
+				} else if strings.Contains(verdict, "Hacked") {
+					submissionRow.VerdictStatus = VerdictHack
+				} else {
+					submissionRow.IsJudging = true
+					isDone = false
+				}
 
 			case 6:
 				time := clean(cell.Text())
