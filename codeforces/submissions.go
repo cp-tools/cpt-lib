@@ -235,30 +235,30 @@ func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
 			case 5:
 				verdict := clean(cell.Text())
 				submissionRow.Verdict = verdict
+				submissionRow.IsJudging = true
 
-				submissionRow.IsJudging = false
-				if strings.Contains(verdict, "Accepted") {
-					submissionRow.VerdictStatus = VerdictAC
-				} else if strings.Contains(verdict, "Wrong answer") {
-					submissionRow.VerdictStatus = VerdictWA
-				} else if strings.Contains(verdict, "Runtime error") {
-					submissionRow.VerdictStatus = VerdictRTE
-				} else if strings.Contains(verdict, "Compilation error") {
-					submissionRow.VerdictStatus = VerdictCE
-				} else if strings.Contains(verdict, "Time limit exceeded") {
-					submissionRow.VerdictStatus = VerdictTLE
-				} else if strings.Contains(verdict, "Memory limit exceeded") {
-					submissionRow.VerdictStatus = VerdictMLE
-				} else if strings.Contains(verdict, "Idleness limit exceeded") {
-					submissionRow.VerdictStatus = VerdictILE
-				} else if strings.Contains(verdict, "Denial of judgement") {
-					submissionRow.VerdictStatus = VerdictDOJ
-				} else if strings.Contains(verdict, "Skipped") {
-					submissionRow.VerdictStatus = VerdictSkip
-				} else if strings.Contains(verdict, "Hacked") {
-					submissionRow.VerdictStatus = VerdictHack
-				} else {
-					submissionRow.IsJudging = true
+				verdictMap := map[string]int{
+					"Accepted":                VerdictAC,
+					"Wrong answer":            VerdictWA,
+					"Runtime error":           VerdictRTE,
+					"Compilation error":       VerdictCE,
+					"Time limit exceeded":     VerdictTLE,
+					"Memory limit exceeded":   VerdictMLE,
+					"Idleness limit exceeded": VerdictILE,
+					"Denial of judgement":     VerdictDOJ,
+					"Skipped":                 VerdictSkip,
+					"Hacked":                  VerdictHack,
+				}
+
+				for k, v := range verdictMap {
+					if strings.Contains(verdict, k) {
+						submissionRow.VerdictStatus = v
+						submissionRow.IsJudging = false
+						break
+					}
+				}
+
+				if submissionRow.IsJudging == true {
 					isDone = false
 				}
 
