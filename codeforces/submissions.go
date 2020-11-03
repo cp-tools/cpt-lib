@@ -2,6 +2,7 @@ package codeforces
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -11,17 +12,35 @@ import (
 type (
 	// Submission holds submission data.
 	Submission struct {
-		ID        string
-		When      time.Time
-		Who       string
-		Problem   string
-		Language  string
-		Verdict   string
-		Time      string
-		Memory    string
-		IsJudging bool
-		Arg       Args
+		ID            string
+		When          time.Time
+		Who           string
+		Problem       string
+		Language      string
+		Verdict       string
+		VerdictStatus int
+		Time          string
+		Memory        string
+		IsJudging     bool
+		Arg           Args
 	}
+)
+
+// Submissions verdict status.
+const (
+	VerdictAC = 1 // Accepted
+
+	VerdictWA  = 2 // Wrong Answer
+	VerdictRTE = 4 // Run Time Error
+
+	VerdictCE  = 5 // Compilation Error
+	VerdictTLE = 6 // Time Limit Exceeded
+	VerdictMLE = 7 // Memory Limit Exceeded
+	VerdictILE = 8 // Idleness Limit Exceeded
+
+	VerdictDOJ  = 9  // Denial Of Judgement
+	VerdictSkip = 10 // Skipped
+	VerdictHack = 11 // Hacked
 )
 
 // SubmissionsPage returns link to user submissions page.
@@ -214,14 +233,34 @@ func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
 				submissionRow.Language = language
 
 			case 5:
-				isJudging := cell.AttrOr("waiting", "") == "true"
-				submissionRow.IsJudging = isJudging
-				if isJudging == true {
-					isDone = false
-				}
-
 				verdict := clean(cell.Text())
 				submissionRow.Verdict = verdict
+				submissionRow.IsJudging = true
+
+				verdictMap := map[string]int{
+					"Accepted":                VerdictAC,
+					"Wrong answer":            VerdictWA,
+					"Runtime error":           VerdictRTE,
+					"Compilation error":       VerdictCE,
+					"Time limit exceeded":     VerdictTLE,
+					"Memory limit exceeded":   VerdictMLE,
+					"Idleness limit exceeded": VerdictILE,
+					"Denial of judgement":     VerdictDOJ,
+					"Skipped":                 VerdictSkip,
+					"Hacked":                  VerdictHack,
+				}
+
+				for k, v := range verdictMap {
+					if strings.Contains(verdict, k) {
+						submissionRow.VerdictStatus = v
+						submissionRow.IsJudging = false
+						break
+					}
+				}
+
+				if submissionRow.IsJudging == true {
+					isDone = false
+				}
 
 			case 6:
 				time := clean(cell.Text())
