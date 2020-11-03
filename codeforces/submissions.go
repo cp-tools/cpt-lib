@@ -31,7 +31,6 @@ const (
 	VerdictAC = 1 // Accepted
 
 	VerdictWA  = 2 // Wrong Answer
-	VerdictPE  = 3 // Presentation Error
 	VerdictRTE = 4 // Run Time Error
 
 	VerdictCE  = 5 // Compilation Error
@@ -242,8 +241,6 @@ func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
 					submissionRow.VerdictStatus = VerdictAC
 				} else if strings.Contains(verdict, "Wrong answer") {
 					submissionRow.VerdictStatus = VerdictWA
-				} else if strings.Contains(verdict, "Presentation error") {
-					submissionRow.VerdictStatus = VerdictPE
 				} else if strings.Contains(verdict, "Runtime error") {
 					submissionRow.VerdictStatus = VerdictRTE
 				} else if strings.Contains(verdict, "Compilation error") {
