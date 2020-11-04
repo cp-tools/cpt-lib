@@ -41,6 +41,8 @@ const (
 	VerdictDOJ  = 9  // Denial Of Judgement
 	VerdictSkip = 10 // Skipped
 	VerdictHack = 11 // Hacked
+
+	VerdictPretestPass = 12 // Pretests passed
 )
 
 // SubmissionsPage returns link to user submissions page.
@@ -248,6 +250,7 @@ func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
 					"Denial of judgement":     VerdictDOJ,
 					"Skipped":                 VerdictSkip,
 					"Hacked":                  VerdictHack,
+					"Pretest passed":          VerdictPretestPass,
 				}
 
 				for k, v := range verdictMap {
