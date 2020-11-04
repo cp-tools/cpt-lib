@@ -296,6 +296,13 @@ func TestArgs_GetContests(t *testing.T) {
 		shouldSkip bool
 	}{
 		{
+			name:    "Test #8",
+			arg:     Args{"12345", "", "contest", ""},
+			args:    args{1},
+			want:    nil,
+			wantErr: true,
+		},
+		{
 			name: "Test #1",
 			arg:  Args{"7", "", "contest", ""},
 			args: args{1},
@@ -450,13 +457,6 @@ func TestArgs_GetContests(t *testing.T) {
 				},
 			},
 			wantErr: false,
-		},
-		{
-			name:    "Test #8",
-			arg:     Args{"12345", "", "contest", ""},
-			args:    args{1},
-			want:    nil,
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
