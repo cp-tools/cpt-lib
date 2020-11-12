@@ -2,13 +2,12 @@ package codeforces
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/cp-tools/cpt-lib/v2/util"
+
 	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
 )
 
 type (
@@ -43,60 +42,12 @@ var (
 	Browser *rod.Browser
 )
 
-// Start initiates the headless browser to use.
+// Start initiates the automated browser to use.
 func Start(headless bool, userDataDir, bin string) error {
-	// Launch browser.
-	launchBrowser := func(controlURL string) (*rod.Browser, error) {
-		b := rod.New().ControlURL(controlURL)
-		if err := b.Connect(); err != nil {
-			return nil, err
-		}
-		return b, nil
-	}
+	bs, err := util.NewBrowser(headless, userDataDir, bin)
+	Browser = bs
 
-	// Store data in cache (to reduce time).
-	cacheDir, _ := os.UserCacheDir()
-	cacheUserDataDir := filepath.Join(cacheDir, "cp-tools", "cpt-lib", bin)
-
-	// Initiate the browser to use.
-	l := launcher.New().
-		UserDataDir(cacheUserDataDir).
-		Headless(headless).
-		Bin(bin)
-
-	controlURL, err := l.Launch()
-	if err != nil {
-		return err
-	}
-
-	Browser, err = launchBrowser(controlURL)
-	if err != nil {
-		return err
-	}
-
-	// Load temporary browser to extract cookies only if path exists.
-	if file, err := os.Stat(userDataDir); err == nil && file.IsDir() {
-		// Initiate browser to extract cookies from.
-		cookiesl := launcher.NewUserMode().
-			UserDataDir(userDataDir).
-			Headless(true).
-			Bin(bin)
-
-		cookiesControlURL, err := cookiesl.Launch()
-		if err != nil {
-			return err
-		}
-
-		cookiesBrowser, err := launchBrowser(cookiesControlURL)
-		if err != nil {
-			return err
-		}
-		defer cookiesBrowser.Close()
-		// Copy cookies of user.
-		Browser.MustSetCookies(cookiesBrowser.MustGetCookies())
-	}
-
-	return nil
+	return err
 }
 
 func (arg Args) String() (str string) {
