@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/cp-tools/cpt-lib/util"
+
+	"github.com/go-rod/rod"
 )
 
 type (
@@ -24,7 +28,18 @@ var (
 
 var (
 	hostURL = "https://atcoder.jp"
+
+	// Browser is the headless browser to use.
+	Browser *rod.Browser
 )
+
+// Start initiates the automated browser to use.
+func Start(headless bool, userDataDir, bin string) error {
+	bs, err := util.NewBrowser(headless, userDataDir, bin)
+	Browser = bs
+
+	return err
+}
 
 // loginPage returns link to login page
 func loginPage() string {

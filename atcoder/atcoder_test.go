@@ -1,9 +1,26 @@
 package atcoder
 
 import (
+	"os"
 	"reflect"
 	"testing"
+
+	"github.com/joho/godotenv"
 )
+
+func TestMain(m *testing.M) {
+	// Load local .env file.
+	godotenv.Load()
+
+	_, browserHeadless := os.LookupEnv("BROWSER_HEADLESS")
+	browserBin := os.Getenv("BROWSER_BINARY")
+	Start(browserHeadless, "", browserBin)
+
+	exitCode := m.Run()
+
+	Browser.Close()
+	os.Exit(exitCode)
+}
 
 func Test_loginPage(t *testing.T) {
 	tests := []struct {
