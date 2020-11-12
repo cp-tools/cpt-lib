@@ -32,12 +32,12 @@ Obviously, some websites have more features, while some have only a subset of th
 
 # Supported Websites
 
-| Website                              | Support                        | Status           |                                                              |
-| ------------------------------------ | ------------------------------ | ---------------- | ------------------------------------------------------------ |
-| [CodeForces](https://codeforces.com) | :star::star::star::star::star: | Is supported     | [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/cp-tools/cpt-lib/Build%20and%20Test%20(codeforces)?label=Tests%20%28codeforces%29)](https://github.com/cp-tools/cpt-lib/actions)[![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces) |
-| [Atcoder](https://atcoder.jp)        | :star::star::star::star:       | In development   |                                                              |
-| [USACO](https://usaco.org)           | :star::star::star:             | In development   |                                                              |
-| [Codechef](https://codechef.com)     | :star::star::star:             | Future milestone |                                                              |
+| Website                              | Support                        | Status                                                       |                                                              |
+| ------------------------------------ | ------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| [CodeForces](https://codeforces.com) | :star::star::star::star::star: | Is supported                                                 | [![GitHub Workflow Status](https://img.shields.io/github/workflow/status/cp-tools/cpt-lib/Build%20and%20Test%20(codeforces)?label=Tests%20%28codeforces%29)](https://github.com/cp-tools/cpt-lib/actions) [![GoDoc](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces?status.svg)](https://godoc.org/github.com/cp-tools/cpt-lib/codeforces) |
+| [Atcoder](https://atcoder.jp)        | :star::star::star::star:       | [In development](https://github.com/cp-tools/cpt-lib/pull/22) |                                                              |
+| [USACO](https://usaco.org)           | :star::star::star:             | In development                                               |                                                              |
+| [Codechef](https://codechef.com)     | :star::star::star:             | Future milestone                                             |                                                              |
 
 #### Legend
 
