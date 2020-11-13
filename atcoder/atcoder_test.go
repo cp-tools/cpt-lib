@@ -1,12 +1,20 @@
 package atcoder
 
 import (
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
 
 	"github.com/joho/godotenv"
 )
+
+func getLoginCredentials() (string, string) {
+	// setup login access to use
+	usr := os.Getenv("ATCODER_USERNAME")
+	passwd := os.Getenv("ATCODER_PASSWORD")
+	return usr, passwd
+}
 
 func TestMain(m *testing.M) {
 	// Load local .env file.
@@ -15,6 +23,12 @@ func TestMain(m *testing.M) {
 	_, browserHeadless := os.LookupEnv("BROWSER_HEADLESS")
 	browserBin := os.Getenv("BROWSER_BINARY")
 	Start(browserHeadless, "", browserBin)
+
+	if _, err := login(getLoginCredentials()); err != nil {
+		fmt.Println("Login failed:", err)
+		Browser.Close()
+		os.Exit(1)
+	}
 
 	exitCode := m.Run()
 
@@ -106,4 +120,48 @@ func TestParse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_login(t *testing.T) {
+	logout()
+
+	type args struct {
+		usr    string
+		passwd string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "Test #1",
+			args:    args{"cptools", "PleaseTryAgain"},
+			want:    "",
+			wantErr: true,
+		},
+		{
+			name:    "Test #2",
+			args:    args{"", ""},
+			want:    "",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := login(tt.args.usr, tt.args.passwd)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("login() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("login() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+
+	// Hope nothing goes wrong here.
+	logout()
+	login(getLoginCredentials())
 }

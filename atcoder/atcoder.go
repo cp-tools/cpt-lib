@@ -89,3 +89,60 @@ func Parse(str string) (Args, error) {
 	}
 	return Args{}, ErrInvalidSpecifier
 }
+
+func login(usr, passwd string) (string, error) {
+	link := loginPage()
+	page, msg, err := loadPage(link, selCSSFooter)
+	if err != nil {
+		return "", err
+	}
+	defer page.Close()
+
+	if msg != "" {
+		// There shouldn't be any error.
+		return "", fmt.Errorf(msg)
+	}
+
+	// Check if current user is logged in.
+	if !page.MustHasR(selCSSHandle, `Sign In`) {
+		handle := page.MustElement(selCSSHandle).MustText()
+		return handle, nil
+	}
+
+	// check if username/password are valid
+	if usr == "" || passwd == "" {
+		return "", errInvalidCredentials
+	}
+
+	// Otherwise, login.
+	page.MustElement("#username").Input(usr)
+	page.MustElement("#password").Input(passwd)
+	page.MustElement("#submit").MustClick().WaitInvisible()
+
+	elm := page.MustElement(selCSSNotif+`.alert-danger`, selCSSHandle)
+	if elm.MustMatches(selCSSNotif) {
+		return "", errInvalidCredentials
+	}
+	return elm.MustText(), nil
+}
+
+func logout() error {
+	page, msg, err := loadPage(hostURL, selCSSFooter)
+	if err != nil {
+		return err
+	}
+	defer page.Close()
+
+	if msg != "" {
+		return fmt.Errorf(msg)
+	}
+
+	if !page.MustHasR(selCSSHandle, `Sign In`) {
+		// Run the logout javascript function.
+		page.MustEval("form_logout.submit()")
+		// Wait till logout is completed.
+		page.ElementR(selCSSHandle, `Sign In`)
+	}
+
+	return nil
+}
