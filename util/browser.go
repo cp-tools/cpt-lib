@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
+	"github.com/go-rod/rod/lib/proto"
 )
 
 // NewBrowser initiates the automated browser to use.
@@ -62,4 +63,26 @@ func NewBrowser(headless bool, userDataDir, bin string) (*rod.Browser, error) {
 	}
 
 	return Browser, nil
+}
+
+// NewPage loads the given link in a new browser tab.
+func NewPage(browser *rod.Browser, link string, block []proto.NetworkResourceType) (*rod.Page, error) {
+	page, err := browser.Page(proto.TargetCreateTarget{URL: link})
+	if err != nil {
+		return nil, err
+	}
+
+	router := page.HijackRequests()
+	router.MustAdd("*", func(h *rod.Hijack) {
+		for _, b := range block {
+			if h.Request.Type() == b {
+				h.Response.Fail(proto.NetworkErrorReasonBlockedByClient)
+				return
+			}
+		}
+		h.ContinueRequest(&proto.FetchContinueRequest{})
+	})
+	go router.Run()
+
+	return page, nil
 }
