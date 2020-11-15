@@ -269,8 +269,6 @@ func TestArgs_GetCountdown(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			got, err := tt.arg.GetCountdown()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.GetCountdown() error = %v, wantErr %v", err, tt.wantErr)
@@ -463,8 +461,6 @@ func TestArgs_GetContests(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			got, err := tt.arg.GetContests(tt.args.pageCount)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.GetContests() error = %v, wantErr %v", err, tt.wantErr)
@@ -745,8 +741,6 @@ func TestArgs_GetDashboard(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			got, err := tt.arg.GetDashboard()
 			// set solve count to -1
 			for i := range got.Problem {

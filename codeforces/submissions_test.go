@@ -259,7 +259,6 @@ func TestArgs_GetSubmissions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
 
 			got, err := tt.arg.GetSubmissions(tt.args.handle, tt.args.count)
 			if (err != nil) != tt.wantErr {
@@ -373,8 +372,6 @@ int main() {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
 			got, err := tt.sub.GetSourceCode()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Submission.GetSourceCode() error = %v, wantErr %v", err, tt.wantErr)
