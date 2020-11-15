@@ -2,49 +2,52 @@ name: Build and Test (codeforces)
 
 on:
   push:
-    branches:
-      - '**'
-    tags-ignore:
-      - 'v*'
-    paths:
-      - 'codeforces/*'
+    branches: ['master']
+    tags-ignore: ['*']
+    paths: ['codeforces/*']
+
+  pull_request:
+    paths: ['codeforces/*']
 
   workflow_dispatch:
 
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
-    
+    runs-on: ubuntu-latest 
+
     steps:
-    - name: Set up Go 1.x
-      uses: actions/setup-go@v2
-      with:
-        go-version: ^1.14
-      id: go
-    
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      - name: Set up Go 1.15
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
 
-    - name: Cache Dependencies
-      uses: actions/cache@v1.2.0
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+      - name: Checkout Project
+        uses: actions/checkout@v2
+      
+      - name: Cache Dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
 
-    - name: Test
-      run: go test -v -coverprofile=coverage.out ./codeforces
-      env:
-        BROWSER_HEADLESS:
-        BROWSER_BINARY: google-chrome
-        
-        CODEFORCES_USERNAME: cp-tools
-        CODEFORCES_PASSWORD: ${{ secrets.CODEFORCES_PASSWORD }}
+      - name: Set Public Test Mode
+        if: github.event_name == 'pull_request'
+        run: echo "PUBLIC_TESTS_ONLY=" >> $GITHUB_ENV 
 
-    - name: Upload Coverage
-      uses: shogo82148/actions-goveralls@v1
-      with:
-        path-to-profile: coverage.out
+      - name: Run Test
+        run: go test -v -coverprofile=c.out -p=3 ./codeforces
+        env:
+          BROWSER_HEADLESS:
+          BROWSER_BINARY: google-chrome
+
+          CODEFORCES_USERNAME: cp-tools
+          CODEFORCES_PASSWORD: ${{ secrets.CODEFORCES_PASSWORD }}
+
+
+      - name: Upload Coverage
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: c.out
 

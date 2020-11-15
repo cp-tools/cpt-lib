@@ -1,15 +1,10 @@
 package codeforces
 
 import (
-	"fmt"
-	"io/ioutil"
-	"os"
 	"reflect"
 	"testing"
 	"time"
 )
-
-// @todo Add more tests in submissions file
 
 func TestArgs_submissionsPage(t *testing.T) {
 	type args struct {
@@ -81,6 +76,10 @@ func TestArgs_submissionsPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.name == "Test #4" {
+				t.SkipNow()
+			}
+
 			got, err := tt.arg.SubmissionsPage(tt.args.handle)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.submissionsPage() error = %v, wantErr %v", err, tt.wantErr)
@@ -260,6 +259,7 @@ func TestArgs_GetSubmissions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
 			got, err := tt.arg.GetSubmissions(tt.args.handle, tt.args.count)
 			if (err != nil) != tt.wantErr {
@@ -300,28 +300,6 @@ func TestArgs_GetSubmissions(t *testing.T) {
 				t.Errorf("Args.GetSubmissions() = %v, want %v", submissions, tt.want)
 			}
 		})
-	}
-}
-
-func TestArgs_ChanGetSubmissions(t *testing.T) {
-	t.Skip() // Works as expected.
-
-	// get (some) submission to submit
-	arg, _ := Parse("1132c")
-	chanSubmissions, _ := arg.GetSubmissions("hohomu", 1)
-	submissions := <-chanSubmissions
-
-	sourceCode, _ := submissions[0].GetSourceCode()
-	sourceCode += fmt.Sprintf("\n//%v\n", genRandomString(10))
-	file, _ := ioutil.TempFile(os.TempDir(), "tmp-source")
-	defer os.Remove(file.Name())
-	file.WriteString(sourceCode)
-
-	// submit solution, and monitor submission status
-	arg.SubmitSolution("GNU G++14 6.4.0", file.Name())
-	chanSubmissions, _ = arg.GetSubmissions("cp-tools", 1)
-	for submissions := range chanSubmissions {
-		t.Log(submissions[0].Verdict)
 	}
 }
 
@@ -395,6 +373,8 @@ int main() {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tt.sub.GetSourceCode()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Submission.GetSourceCode() error = %v, wantErr %v", err, tt.wantErr)

@@ -438,6 +438,8 @@ func TestArgs_GetProblems(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := tt.arg.GetProblems()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Args.GetProblems() error = %v, wantErr %v", err, tt.wantErr)
@@ -451,6 +453,10 @@ func TestArgs_GetProblems(t *testing.T) {
 }
 
 func TestArgs_SubmitSolution(t *testing.T) {
+	if publicTestsOnly {
+		t.SkipNow()
+	}
+
 	time.Sleep(time.Second * 10)
 
 	sFile, _ := ioutil.TempFile(os.TempDir(), "cpt-submission")
