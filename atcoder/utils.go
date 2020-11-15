@@ -25,7 +25,7 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
 	elm := page.MustElement(selMatch...)
 
 	if elm.MustMatches(selCSSNotif) {
-		return page, elm.MustText(), nil
+		return page, util.StrClean(elm.MustText()), nil
 	}
 
 	return page, "", nil

@@ -62,7 +62,7 @@ func Parse(str string) (Args, error) {
 		}
 	)
 
-	str = strings.TrimSpace(str)
+	str = strings.TrimSpace(util.StrClean(str))
 	if str == "" {
 		return Args{}, nil
 	}
@@ -70,7 +70,7 @@ func Parse(str string) (Args, error) {
 	for _, rgx := range valRx {
 		re := regexp.MustCompile(rgx)
 		if re.MatchString(str) {
-			// attrib : stackoverflow.com/a/9606036
+			// https://stackoverflow.com/a/46202939/9606036
 			match := re.FindStringSubmatch(str)
 			result := map[string]string{}
 			for i, name := range re.SubexpNames() {
@@ -78,8 +78,7 @@ func Parse(str string) (Args, error) {
 					result[name] = match[i]
 				}
 			}
-			// convert to lowercase (default config)
-			result["prob"] = strings.ToLower(result["prob"])
+
 			arg := Args{
 				Contest: result["cont"],
 				Problem: result["prob"],
@@ -106,7 +105,7 @@ func login(usr, passwd string) (string, error) {
 	// Check if current user is logged in.
 	if !page.MustHasR(selCSSHandle, `Sign In`) {
 		handle := page.MustElement(selCSSHandle).MustText()
-		return handle, nil
+		return util.StrClean(handle), nil
 	}
 
 	// check if username/password are valid
@@ -123,7 +122,7 @@ func login(usr, passwd string) (string, error) {
 	if elm.MustMatches(selCSSNotif) {
 		return "", errInvalidCredentials
 	}
-	return elm.MustText(), nil
+	return util.StrClean(elm.MustText()), nil
 }
 
 func logout() error {
