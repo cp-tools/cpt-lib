@@ -250,7 +250,7 @@ func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
 					"Denial of judgement":     VerdictDOJ,
 					"Skipped":                 VerdictSkip,
 					"Hacked":                  VerdictHack,
-					"Pretest passed":          VerdictPretestPass,
+					"Pretests passed":         VerdictPretestPass,
 				}
 
 				for k, v := range verdictMap {
