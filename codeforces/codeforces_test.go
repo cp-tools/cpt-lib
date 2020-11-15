@@ -9,6 +9,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var publicTestsOnly bool
+
 func getLoginCredentials() (string, string) {
 	// setup login access to use
 	usr := os.Getenv("CODEFORCES_USERNAME")
@@ -20,16 +22,19 @@ func TestMain(m *testing.M) {
 	// Load local .env file.
 	godotenv.Load()
 
+	_, publicTestsOnly = os.LookupEnv("PUBLIC_TESTS_ONLY")
+
 	_, browserHeadless := os.LookupEnv("BROWSER_HEADLESS")
 	browserBin := os.Getenv("BROWSER_BINARY")
 	Start(browserHeadless, "", browserBin)
 
-	if _, err := login(getLoginCredentials()); err != nil {
-		fmt.Println("Login failed:", err)
-		Browser.Close()
-		os.Exit(1)
+	if !publicTestsOnly {
+		if _, err := login(getLoginCredentials()); err != nil {
+			fmt.Println("Login failed:", err)
+			Browser.Close()
+			os.Exit(1)
+		}
 	}
-
 	exitCode := m.Run()
 
 	Browser.Close()
@@ -215,6 +220,10 @@ func TestArgs_String(t *testing.T) {
 }
 
 func Test_login(t *testing.T) {
+	if publicTestsOnly {
+		t.SkipNow()
+	}
+
 	logout()
 
 	type args struct {
