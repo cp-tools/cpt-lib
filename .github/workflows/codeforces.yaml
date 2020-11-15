@@ -37,7 +37,7 @@ jobs:
         run: echo "PUBLIC_TESTS_ONLY=" >> $GITHUB_ENV 
 
       - name: Run Test
-        run: go test -v -coverprofile=c.out ./codeforces
+        run: go test -v -coverprofile=c.out -p=3 ./codeforces
         env:
           BROWSER_HEADLESS:
           BROWSER_BINARY: google-chrome
