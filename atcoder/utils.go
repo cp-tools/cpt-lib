@@ -21,9 +21,13 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
 		return nil, "", err
 	}
 
-	selMatch = append([]string{selCSSNotif}, selMatch...)
-	elm := page.MustElement(selMatch...)
+	rc := page.Race()
+	rc.Element(selCSSNotif)
+	for _, sel := range selMatch {
+		rc.Element(sel)
+	}
 
+	elm := rc.MustDo()
 	if elm.MustMatches(selCSSNotif) {
 		return page, util.StrClean(elm.MustText()), nil
 	}

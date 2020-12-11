@@ -118,7 +118,11 @@ func login(usr, passwd string) (string, error) {
 	page.MustElement("#password").Input(passwd)
 	page.MustElement("#submit").MustClick().WaitInvisible()
 
-	elm := page.MustElement(selCSSNotif+`.alert-danger`, selCSSHandle)
+	elm := page.Race().
+		Element(selCSSHandle).
+		Element(selCSSNotif + `.alert-danger`).
+		MustDo()
+
 	if elm.MustMatches(selCSSNotif) {
 		return "", errInvalidCredentials
 	}
