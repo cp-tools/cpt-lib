@@ -149,6 +149,7 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 					break
 				}
 				time.Sleep(time.Millisecond * 350)
+				page.MustReload().MustWaitLoad()
 			}
 		} else {
 			// iterate till no more valid required pages left
