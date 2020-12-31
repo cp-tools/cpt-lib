@@ -22,7 +22,10 @@ func TestMain(m *testing.M) {
 
 	_, browserHeadless := os.LookupEnv("BROWSER_HEADLESS")
 	browserBin := os.Getenv("BROWSER_BINARY")
-	Start(browserHeadless, "", browserBin)
+	if err := Start(browserHeadless, "", browserBin); err != nil {
+		fmt.Println("Failed to start browser:", err)
+		os.Exit(1)
+	}
 
 	if _, err := login(getLoginCredentials()); err != nil {
 		fmt.Println("Login failed:", err)

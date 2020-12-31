@@ -120,10 +120,10 @@ func login(usr, passwd string) (string, error) {
 
 	elm := page.Race().
 		Element(selCSSHandle).
-		Element(selCSSNotif + `.alert-danger`).
+		Element(`.alert.for__password`).
 		MustDo()
 
-	if elm.MustMatches(selCSSNotif) {
+	if !elm.MustMatches(selCSSHandle) {
 		return "", errInvalidCredentials
 	}
 	return util.StrClean(elm.MustText()), nil
