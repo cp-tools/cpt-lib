@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	selCSSHandle = `.navbar-right>li:last-child a`
+	selCSSHandle = `.navbar-right>li:last-child>a[class]`
 	selCSSNotif  = `#main-container .alert`
 	selCSSFooter = `footer.footer`
 )

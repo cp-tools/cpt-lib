@@ -18,6 +18,10 @@ type (
 		Contest string
 		Problem string
 	}
+
+	page struct {
+		*rod.Page
+	}
 )
 
 // Errors returned by library.
@@ -103,7 +107,7 @@ func login(usr, passwd string) (string, error) {
 	}
 
 	// Check if current user is logged in.
-	if !page.MustHasR(selCSSHandle, `Sign In`) {
+	if page.MustHas(selCSSHandle) {
 		handle := page.MustElement(selCSSHandle).MustText()
 		return util.StrClean(handle), nil
 	}
@@ -120,7 +124,7 @@ func login(usr, passwd string) (string, error) {
 
 	elm := page.Race().
 		Element(selCSSHandle).
-		Element(`.alert.for__password`).
+		ElementR(selCSSNotif, "Username or Password is incorrect").
 		MustDo()
 
 	if !elm.MustMatches(selCSSHandle) {
@@ -140,11 +144,11 @@ func logout() error {
 		return fmt.Errorf(msg)
 	}
 
-	if !page.MustHasR(selCSSHandle, `Sign In`) {
-		// Run the logout javascript function.
-		page.MustEval("form_logout.submit()")
+	// Run the logout javascript function.
+	page.MustEval("form_logout.submit()")
+	if page.MustHas(selCSSHandle) {
 		// Wait till logout is completed.
-		page.ElementR(selCSSHandle, `Sign In`)
+		page.MustElement(selCSSHandle).WaitInvisible()
 	}
 
 	return nil
