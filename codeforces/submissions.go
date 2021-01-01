@@ -258,6 +258,8 @@ func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
 				if v, ok := verdictMap[verdictStatus]; ok {
 					submissionRow.VerdictStatus = v
 					submissionRow.IsJudging = false
+				} else {
+					submissionRow.IsJudging = true
 				}
 
 				if submissionRow.IsJudging == true {
