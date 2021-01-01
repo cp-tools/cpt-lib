@@ -2,7 +2,6 @@ package codeforces
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -42,6 +41,7 @@ const (
 	VerdictSkip = 10 // Skipped
 	VerdictHack = 11 // Hacked
 
+	// Depreciated. Use VerdictAC instead.
 	VerdictPretestPass = 12 // Pretests passed
 )
 
@@ -238,28 +238,26 @@ func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
 			case 5:
 				verdict := clean(cell.Text())
 				submissionRow.Verdict = verdict
-				submissionRow.IsJudging = true
 
 				verdictMap := map[string]int{
-					"Accepted":                VerdictAC,
-					"Wrong answer":            VerdictWA,
-					"Runtime error":           VerdictRTE,
-					"Compilation error":       VerdictCE,
-					"Time limit exceeded":     VerdictTLE,
-					"Memory limit exceeded":   VerdictMLE,
-					"Idleness limit exceeded": VerdictILE,
-					"Denial of judgement":     VerdictDOJ,
-					"Skipped":                 VerdictSkip,
-					"Hacked":                  VerdictHack,
-					"Pretests passed":         VerdictPretestPass,
+					"OK":                      VerdictAC,
+					"WRONG_ANSWER":            VerdictWA,
+					"RUNTIME_ERROR":           VerdictRTE,
+					"COMPILATION_ERROR":       VerdictCE,
+					"TIME_LIMIT_EXCEEDED":     VerdictTLE,
+					"MEMORY_LIMIT_EXCEEDED":   VerdictMLE,
+					"IDLENESS_LIMIT_EXCEEDED": VerdictILE,
+					"CRASHED":                 VerdictDOJ,
+					"SKIPPED":                 VerdictSkip,
+					"CHALLENGED":              VerdictHack,
+					// "Pretests passed":         VerdictPretestPass,
 				}
 
-				for k, v := range verdictMap {
-					if strings.Contains(verdict, k) {
-						submissionRow.VerdictStatus = v
-						submissionRow.IsJudging = false
-						break
-					}
+				verdictStatus := cell.Find(".submissionVerdictWrapper").
+					AttrOr("submissionverdict", "")
+				if v, ok := verdictMap[verdictStatus]; ok {
+					submissionRow.VerdictStatus = v
+					submissionRow.IsJudging = false
 				}
 
 				if submissionRow.IsJudging == true {
