@@ -451,10 +451,6 @@ func TestArgs_GetProblems(t *testing.T) {
 }
 
 func TestArgs_SubmitSolution(t *testing.T) {
-	if publicTestsOnly {
-		t.SkipNow()
-	}
-
 	time.Sleep(time.Second * 10)
 
 	sFile, _ := ioutil.TempFile(os.TempDir(), "cpt-submission")
