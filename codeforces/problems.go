@@ -212,6 +212,7 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 				break
 			}
 			time.Sleep(time.Millisecond * 350)
+			page.MustReload().MustWaitLoad()
 		}
 	}()
 

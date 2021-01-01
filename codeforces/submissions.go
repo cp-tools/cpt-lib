@@ -149,6 +149,7 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 					break
 				}
 				time.Sleep(time.Millisecond * 350)
+				page.MustReload().MustWaitLoad()
 			}
 		} else {
 			// iterate till no more valid required pages left
@@ -257,6 +258,8 @@ func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
 				if v, ok := verdictMap[verdictStatus]; ok {
 					submissionRow.VerdictStatus = v
 					submissionRow.IsJudging = false
+				} else {
+					submissionRow.IsJudging = true
 				}
 
 				if submissionRow.IsJudging == true {
