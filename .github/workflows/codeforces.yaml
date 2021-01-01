@@ -2,10 +2,8 @@ name: Build and Test (codeforces)
 
 on:
   push:
+    branches: ['**']
     tags-ignore: ['*']
-    paths: ['codeforces/*']
-
-  pull_request:
     paths: ['codeforces/*']
 
   workflow_dispatch:
@@ -30,10 +28,6 @@ jobs:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-go-
-
-      - name: Set Public Test Mode
-        if: github.event_name == 'pull_request'
-        run: echo "PUBLIC_TESTS_ONLY=" >> $GITHUB_ENV 
 
       - name: Run Test
         run: go test -v -coverprofile=c.out ./codeforces
