@@ -2,6 +2,7 @@ package atcoder
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 )
 
@@ -15,42 +16,64 @@ func (arg Args) DashboardPage() (link string, err error) {
 	return
 }
 
-func (arg Args) CountdownPage(isVC bool) (link string, err error) {
+// VirtualPage returns link to virtual contest tab.
+func (arg Args) VirtualPage() (link string, err error) {
 	if arg.Contest == "" {
 		return "", ErrInvalidSpecifier
 	}
 
 	dashboardLink, _ := arg.DashboardPage()
-	if isVC == true {
-		link = fmt.Sprintf("%v/virtual", dashboardLink)
-		return
-	}
-
-	link = dashboardLink
+	link = fmt.Sprintf("%v/virtual", dashboardLink)
 	return
 }
 
-func (arg Args) GetCountdown(isVC bool) (time.Duration, error) {
-	if arg.Contest == "" {
-		return 0, ErrInvalidSpecifier
+func (p *page) getCountdown() (time.Duration, error) {
+	// First check for virtual countdown.
+	if match := regexp.MustCompile(`var virtualStartTime = moment\("(.*)"\)`).
+		FindStringSubmatch(p.MustElement("html").MustHTML()); len(match) == 2 {
+		startTime, err := time.Parse(time.RFC3339Nano, match[1])
+		if err != nil {
+			return 0, err
+		}
+
+		dur := time.Until(startTime).Truncate(time.Second)
+		if dur < 0 { // Virtual already started; No countdown
+			dur = 0
+		}
+		return dur, nil
 	}
 
-	link, err := arg.CountdownPage(isVC)
+	// Parse actual contest start time.
+	startTimeStr := p.MustEval("startTime._d.toISOString()").String()
+	startTime, err := time.Parse(time.RFC3339Nano, startTimeStr)
 	if err != nil {
 		return 0, err
 	}
 
-	page, msg, err := loadPage(link, selCSSFooter)
+	dur := time.Until(startTime).Truncate(time.Second)
+	if dur < 0 { // Contest already started; No countdown
+		dur = 0
+	}
+	return dur, nil
+}
+
+// GetCountdown ...
+func (arg Args) GetCountdown() (time.Duration, error) {
+	link, err := arg.VirtualPage()
 	if err != nil {
 		return 0, err
 	}
-	defer page.Close()
+
+	p, msg, err := loadPage(link, selCSSFooter)
+	if err != nil {
+		return 0, err
+	}
+	defer p.Close()
 
 	if msg != "" {
 		// there should be no notification
 		return 0, fmt.Errorf(msg)
 	}
 
-	fmt.Println(page.MustEval("startTime._d.toISOString()").String())
-	return 0, nil
+	return p.getCountdown()
 }
