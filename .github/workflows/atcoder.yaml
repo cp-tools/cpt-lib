@@ -1,0 +1,45 @@
+name: Test (atcoder)
+
+on:
+  push:
+    branches: ['**']
+    tags-ignore: ['*']
+    paths: ['atcoder/*']
+
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest 
+
+    steps:
+      - name: Set up Go 1.15
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
+
+      - name: Checkout Project
+        uses: actions/checkout@v2
+      
+      - name: Cache Dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Run Tests
+        run: go test -v -coverprofile=c.out ./atcoder
+        env:
+          BROWSER_HEADLESS:
+          BROWSER_BINARY: google-chrome
+
+          ATCODER_USERNAME: cptools
+          ATCODER_PASSWORD: ${{ secrets.ATCODER_PASSWORD }}
+
+      - name: Upload Coverage
+        uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: c.out
+
