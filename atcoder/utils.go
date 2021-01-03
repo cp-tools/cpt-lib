@@ -2,7 +2,6 @@ package atcoder
 
 import (
 	"github.com/cp-tools/cpt-lib/util"
-	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 )
 
@@ -12,8 +11,8 @@ var (
 	selCSSFooter = `footer.footer`
 )
 
-func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
-	page, err := util.NewPage(Browser, link, []proto.NetworkResourceType{
+func loadPage(link string, selMatch ...string) (*page, string, error) {
+	rp, err := util.NewPage(Browser, link, []proto.NetworkResourceType{
 		proto.NetworkResourceTypeImage, proto.NetworkResourceTypeFont,
 		proto.NetworkResourceTypeStylesheet, proto.NetworkResourceTypeMedia,
 	})
@@ -21,7 +20,9 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
 		return nil, "", err
 	}
 
-	rc := page.Race()
+	p := &page{rp}
+
+	rc := p.Race()
 	rc.Element(selCSSNotif)
 	for _, sel := range selMatch {
 		rc.Element(sel)
@@ -29,8 +30,8 @@ func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
 
 	elm := rc.MustDo()
 	if elm.MustMatches(selCSSNotif) {
-		return page, util.StrClean(elm.MustText()), nil
+		return p, util.StrClean(elm.MustText()), nil
 	}
 
-	return page, "", nil
+	return p, "", nil
 }
