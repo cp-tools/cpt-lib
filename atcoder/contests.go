@@ -64,15 +64,17 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 		return 0, err
 	}
 
-	p, msg, err := loadPage(link, selCSSFooter)
+	p, err := loadPage(link)
 	if err != nil {
 		return 0, err
 	}
 	defer p.Close()
 
-	if msg != "" {
-		// there should be no notification
-		return 0, fmt.Errorf(msg)
+	_, err = p.Race().Element(`.alert`).Handle(handleErrMsg).
+		Element(`footer.footer`).Do()
+
+	if err != nil {
+		return 0, err
 	}
 
 	return p.getCountdown()

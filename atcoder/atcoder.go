@@ -93,63 +93,72 @@ func Parse(str string) (Args, error) {
 	return Args{}, ErrInvalidSpecifier
 }
 
-func login(usr, passwd string) (string, error) {
-	link := loginPage()
-	page, msg, err := loadPage(link, selCSSFooter)
-	if err != nil {
-		return "", err
-	}
-	defer page.Close()
-
-	if msg != "" {
-		// There shouldn't be any error.
-		return "", fmt.Errorf(msg)
-	}
-
+func (p *page) login(usr, passwd string) (string, error) {
 	// Check if current user is logged in.
-	if page.MustHas(selCSSHandle) {
-		handle := page.MustElement(selCSSHandle).MustText()
-		return util.StrClean(handle), nil
+	if handle := p.MustEval(`userScreenName`).String(); handle != "" {
+		return handle, nil
 	}
 
-	// check if username/password are valid
+	// Check if username/password are valid.
 	if usr == "" || passwd == "" {
 		return "", errInvalidCredentials
 	}
 
 	// Otherwise, login.
-	page.MustElement("#username").Input(usr)
-	page.MustElement("#password").Input(passwd)
-	page.MustElement("#submit").MustClick().WaitInvisible()
+	p.MustElement("#username").Input(usr)
+	p.MustElement("#password").Input(passwd)
+	p.MustElement("#submit").MustClick().WaitInvisible()
 
-	elm := page.Race().
-		Element(selCSSHandle).
-		ElementR(selCSSNotif, "Username or Password is incorrect").
-		MustDo()
+	_, err := p.Race().ElementR(`.alert`, `Username or Password is incorrect`).
+		Handle(func(e *rod.Element) error { return errInvalidCredentials }).
+		Element(`.navbar-right>li:last-child>a[class]`).Do()
 
-	if !elm.MustMatches(selCSSHandle) {
-		return "", errInvalidCredentials
+	if err != nil {
+		return "", err
 	}
-	return util.StrClean(elm.MustText()), nil
+
+	handle := p.MustEval(`userScreenName`).String()
+	return handle, nil
+}
+
+func login(usr, passwd string) (string, error) {
+	link := loginPage()
+	p, err := loadPage(link)
+	if err != nil {
+		return "", err
+	}
+	defer p.Close()
+
+	_, err = p.Race().Element(`alert`).Handle(handleErrMsg).
+		Element(`footer.footer`).Do()
+
+	if err != nil {
+		return "", err
+	}
+
+	return p.login(usr, passwd)
+}
+
+func (p *page) logout() error {
+	// Run the logout javascript function.
+	p.MustEval("form_logout.submit()")
+	p.MustWait(`userScreenName == ""`)
+	return nil
 }
 
 func logout() error {
-	page, msg, err := loadPage(hostURL, selCSSFooter)
+	p, err := loadPage(hostURL)
 	if err != nil {
 		return err
 	}
-	defer page.Close()
+	defer p.Close()
 
-	if msg != "" {
-		return fmt.Errorf(msg)
+	_, err = p.Race().Element(`.alert`).Handle(handleErrMsg).
+		Element(`footer.footer`).Do()
+
+	if err != nil {
+		return err
 	}
 
-	// Run the logout javascript function.
-	page.MustEval("form_logout.submit()")
-	if page.MustHas(selCSSHandle) {
-		// Wait till logout is completed.
-		page.MustElement(selCSSHandle).WaitInvisible()
-	}
-
-	return nil
+	return p.logout()
 }
