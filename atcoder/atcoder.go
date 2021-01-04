@@ -45,11 +45,6 @@ func Start(headless bool, userDataDir, bin string) error {
 	return err
 }
 
-// loginPage returns link to login page
-func loginPage() string {
-	return fmt.Sprintf("%v/login", hostURL)
-}
-
 // Parse passed in specifier string to new Args struct.
 // Validates parsed args and returns error if any.
 func Parse(str string) (Args, error) {
