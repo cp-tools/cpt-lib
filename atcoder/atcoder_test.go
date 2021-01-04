@@ -6,8 +6,40 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-rod/rod"
 	"github.com/joho/godotenv"
 )
+
+func login(usr, passwd string) (string, error) {
+	p, err := loadPage(fmt.Sprintf("%v/login", hostURL))
+	if err != nil {
+		return "", err
+	}
+	defer p.Close()
+
+	if _, err := p.Race().Element(`alert`).Handle(handleErrMsg).
+		Element(`footer.footer`).Do(); err != nil {
+		return "", err
+	}
+
+	// Check if current user is logged in.
+	if handle := p.MustEval(`userScreenName`).String(); handle != "" {
+		return handle, nil
+	}
+	// Otherwise, login.
+	p.MustElement("#username").Input(usr)
+	p.MustElement("#password").Input(passwd)
+	p.MustElement("#submit").MustClick().WaitInvisible()
+
+	if _, err := p.Race().ElementR(`.alert`, `Username or Password is incorrect`).
+		Handle(func(e *rod.Element) error { return fmt.Errorf(e.MustText()) }).
+		Element(`.navbar-right>li:last-child>a[class]`).Do(); err != nil {
+		return "", err
+	}
+
+	handle := p.MustEval(`userScreenName`).String()
+	return handle, nil
+}
 
 func getLoginCredentials() (string, string) {
 	// setup login access to use
@@ -104,48 +136,4 @@ func TestParse(t *testing.T) {
 			}
 		})
 	}
-}
-
-func Test_login(t *testing.T) {
-	logout()
-
-	type args struct {
-		usr    string
-		passwd string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
-	}{
-		{
-			name:    "Test #1",
-			args:    args{"cptools", "PleaseTryAgain"},
-			want:    "",
-			wantErr: true,
-		},
-		{
-			name:    "Test #2",
-			args:    args{"", ""},
-			want:    "",
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := login(tt.args.usr, tt.args.passwd)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("login() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("login() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-
-	// Hope nothing goes wrong here.
-	logout()
-	login(getLoginCredentials())
 }

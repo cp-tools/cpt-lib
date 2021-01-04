@@ -2,25 +2,6 @@ package atcoder
 
 import "testing"
 
-func Test_loginPage(t *testing.T) {
-	tests := []struct {
-		name string
-		want string
-	}{
-		{
-			name: "Login Page",
-			want: "https://atcoder.jp/login",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := loginPage(); got != tt.want {
-				t.Errorf("loginPage() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestArgs_DashboardPage(t *testing.T) {
 	tests := []struct {
 		name     string

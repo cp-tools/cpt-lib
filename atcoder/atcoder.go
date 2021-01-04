@@ -26,8 +26,7 @@ type (
 
 // Errors returned by library.
 var (
-	ErrInvalidSpecifier   = fmt.Errorf("invalid specifier data")
-	errInvalidCredentials = fmt.Errorf("invalid login credentials")
+	ErrInvalidSpecifier = fmt.Errorf("invalid specifier data")
 )
 
 var (
@@ -86,74 +85,4 @@ func Parse(str string) (Args, error) {
 		}
 	}
 	return Args{}, ErrInvalidSpecifier
-}
-
-func (p *page) login(usr, passwd string) (string, error) {
-	// Check if current user is logged in.
-	if handle := p.MustEval(`userScreenName`).String(); handle != "" {
-		return handle, nil
-	}
-
-	// Check if username/password are valid.
-	if usr == "" || passwd == "" {
-		return "", errInvalidCredentials
-	}
-
-	// Otherwise, login.
-	p.MustElement("#username").Input(usr)
-	p.MustElement("#password").Input(passwd)
-	p.MustElement("#submit").MustClick().WaitInvisible()
-
-	_, err := p.Race().ElementR(`.alert`, `Username or Password is incorrect`).
-		Handle(func(e *rod.Element) error { return errInvalidCredentials }).
-		Element(`.navbar-right>li:last-child>a[class]`).Do()
-
-	if err != nil {
-		return "", err
-	}
-
-	handle := p.MustEval(`userScreenName`).String()
-	return handle, nil
-}
-
-func login(usr, passwd string) (string, error) {
-	link := loginPage()
-	p, err := loadPage(link)
-	if err != nil {
-		return "", err
-	}
-	defer p.Close()
-
-	_, err = p.Race().Element(`alert`).Handle(handleErrMsg).
-		Element(`footer.footer`).Do()
-
-	if err != nil {
-		return "", err
-	}
-
-	return p.login(usr, passwd)
-}
-
-func (p *page) logout() error {
-	// Run the logout javascript function.
-	p.MustEval("form_logout.submit()")
-	p.MustWait(`userScreenName == ""`)
-	return nil
-}
-
-func logout() error {
-	p, err := loadPage(hostURL)
-	if err != nil {
-		return err
-	}
-	defer p.Close()
-
-	_, err = p.Race().Element(`.alert`).Handle(handleErrMsg).
-		Element(`footer.footer`).Do()
-
-	if err != nil {
-		return err
-	}
-
-	return p.logout()
 }

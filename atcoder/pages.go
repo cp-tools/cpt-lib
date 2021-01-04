@@ -2,11 +2,6 @@ package atcoder
 
 import "fmt"
 
-// loginPage returns link to login page
-func loginPage() string {
-	return fmt.Sprintf("%v/login", hostURL)
-}
-
 // DashboardPage returns link to dashboard of contest
 func (arg Args) DashboardPage() (link string, err error) {
 	if arg.Contest == "" {
