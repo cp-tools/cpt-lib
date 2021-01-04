@@ -15,7 +15,7 @@ Make sure to star :star: the project if you found it useful. :smile:
 - [Getting Started](#getting-started)
   - [Installation](#installation)
   - [Usage](#usage)
-- [Contributing](CONTRIBUTING.md)
+- [Contributing](.github/CONTRIBUTING.md)
 - [FAQ](#faq)
 
 # Overview
