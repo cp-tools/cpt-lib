@@ -42,101 +42,18 @@ const (
 	RegistrationNotExists = -1
 )
 
-// CountdownPage returns link to countdown in contest.
-func (arg Args) CountdownPage() (link string, err error) {
-	if arg.Contest == "" {
-		return "", ErrInvalidSpecifier
+func (p *page) getCountdown() (time.Duration, error) {
+	pd := p.parse()
+
+	countdownStr := pd.Find(`span.countdown>span`).AttrOr(`title`, "")
+	if countdownStr == "" {
+		countdownStr = pd.Find(`span.countdown`).Text()
 	}
 
-	switch arg.Class {
-	case ClassGroup:
-		if arg.Group == "" {
-			return "", ErrInvalidSpecifier
-		}
-
-		link = fmt.Sprintf("%v/group/%v/contest/%v/countdown", hostURL, arg.Group, arg.Contest)
-
-	case ClassContest, ClassGym:
-		link = fmt.Sprintf("%v/%v/%v/countdown", hostURL, arg.Class, arg.Contest)
-
-	default:
-		return "", ErrInvalidSpecifier
-	}
-
-	return
-}
-
-// ContestsPage returns link to contests page of group/gym/contest.
-func (arg Args) ContestsPage() (link string, err error) {
-
-	switch arg.Class {
-	case ClassGroup:
-		if arg.Group == "" {
-			return "", ErrInvalidSpecifier
-		}
-
-		// details of individual contest can't be parsed.
-		// fallback to parsing all contests in group.
-		link = fmt.Sprintf("%v/group/%v/contests?complete=true", hostURL, arg.Group)
-
-	case ClassContest:
-		if arg.Contest == "" {
-			link = fmt.Sprintf("%v/contests?complete=true", hostURL)
-			return
-		}
-
-		link = fmt.Sprintf("%v/contests/%v", hostURL, arg.Contest)
-
-	case ClassGym:
-		if arg.Contest == "" {
-			link = fmt.Sprintf("%v/gyms?complete=true", hostURL)
-			return
-		}
-
-		link = fmt.Sprintf("%v/contests/%v", hostURL, arg.Contest)
-
-	default:
-		return "", ErrInvalidSpecifier
-	}
-
-	return
-}
-
-// DashboardPage returns link to dashboard of contest.
-func (arg Args) DashboardPage() (link string, err error) {
-	if arg.Contest == "" {
-		return "", ErrInvalidSpecifier
-	}
-
-	switch arg.Class {
-	case ClassGroup:
-		if arg.Group == "" {
-			return "", ErrInvalidSpecifier
-		}
-
-		link = fmt.Sprintf("%v/group/%v/contest/%v", hostURL, arg.Group, arg.Contest)
-
-	case ClassContest, ClassGym:
-		link = fmt.Sprintf("%v/%v/%v", hostURL, arg.Class, arg.Contest)
-
-	default:
-		return "", ErrInvalidSpecifier
-	}
-
-	return
-}
-
-// RegisterPage returns link to registration (not virtual contest registration)
-// in contest.
-func (arg Args) RegisterPage() (link string, err error) {
-	if arg.Contest == "" || arg.Class != ClassContest {
-		return "", ErrInvalidSpecifier
-	}
-
-	// gyms/groups don't support registration, do they!?
-	link = fmt.Sprintf("%v/contestRegistration/%v",
-		hostURL, arg.Contest)
-	return
+	var h, m, s int64
+	fmt.Sscanf(countdownStr, "%d:%d:%d", &h, &m, &s)
+	dur := time.Duration(h*3600+m*60+s) * time.Second
+	return dur, nil
 }
 
 // GetCountdown returns the time before the given contest begins.
@@ -154,33 +71,133 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 		return 0, err
 	}
 
-	page, msg, err := loadPage(link, selCSSFooter)
+	p, err := loadPage(link)
 	if err != nil {
 		return 0, err
 	}
-	defer page.Close()
+	defer p.Close()
 
-	if msg != "" {
-		// there should be no notification
-		return 0, fmt.Errorf(msg)
+	if _, err := p.Race().Element(`#jGrowl .message`).Handle(handleErrMsg).
+		Element(`#footer`).Do(); err != nil {
+		return 0, err
 	}
 
-	doc := processHTML(page)
-	val := doc.Find("span.countdown>span").AttrOr("title", "")
-	if len(val) == 0 {
-		val = doc.Find("span.countdown").Text()
-	}
-
-	var h, m, s int64
-	fmt.Sscanf(val, "%d:%d:%d", &h, &m, &s)
-	dur := time.Duration(h*3600+m*60+s) * time.Second
-	return dur, nil
+	return p.getCountdown()
 }
 
-// GetContests returns metadata of the given contest.
+func (p *page) getContests(arg Args) ([]Contest, error) {
+	pd := p.parse()
+
+	contests := make([]Contest, 0)
+
+	contestTableRows := pd.Find(`tr[data-contestid]`)
+	contestTableRows.Each(func(_ int, row *goquery.Selection) {
+		// parse duration string (using ugly regex)
+		parseDuration := func(str string) time.Duration {
+			re := regexp.MustCompile(`(?:(\d+):)?(\d+):(\d+)`)
+			val := re.FindStringSubmatch(str)
+			d, _ := strconv.Atoi(val[1])
+			h, _ := strconv.Atoi(val[2])
+			m, _ := strconv.Atoi(val[3])
+			return time.Duration(d*1440+h*60+m) * time.Minute
+		}
+
+		// Data of current contest is stored in this.
+		var contest Contest
+
+		contest.Arg, _ = Parse(arg.Group + row.AttrOr(`data-contestid`, ``))
+		if arg.Contest != "" && arg.Contest != contest.Arg.Contest {
+			// contest id is specified to fetch.
+			// This contest doesn't match it.
+			return
+		}
+
+		// the table format for contests is different from groups and gyms/contests.
+		if (contest.Arg.Class == ClassContest) ||
+			(arg.Class == ClassGym && arg.Contest != "") {
+			row.Find(`td`).Each(func(cellIndex int, cell *goquery.Selection) {
+				switch cellIndex {
+				case 0:
+					cell.Find(`a`).Remove()
+					contest.Name = clean(cell.Text())
+
+				case 1:
+					writers := strings.Split(clean(cell.Text()), "\n")
+					if writers[0] == "" {
+						// no writers are specified. Set slice to nil
+						writers = nil
+					}
+
+					contest.Writers = writers
+
+				case 2:
+					contest.StartTime = parseTime(cell.Text())
+
+				case 3:
+					contest.Duration = parseDuration(clean(cell.Text()))
+
+				case 5:
+					cell.Find(`.countdown`).Remove()
+					if contest.Arg.Class == ClassGym {
+						contest.RegStatus = RegistrationNotExists
+						contest.RegCount = RegistrationNotExists
+						contest.Description = strings.Split(clean(cell.Text()), "\n")
+					} else {
+						// extract registration count
+						registrationCountStr := cell.Find(`.contestParticipantCountLinkMargin`).Text()
+						registrationCountStr = clean(registrationCountStr)
+
+						if len(registrationCountStr) > 1 {
+							regCount, _ := strconv.Atoi(registrationCountStr[1:])
+							contest.RegCount = regCount
+						}
+						// extract registration status
+						if cell.Find(`.welldone`).Length() != 0 {
+							contest.RegStatus = RegistrationDone
+						} else if cell.Find(`a`).Not(`a[title]`).Length() > 0 {
+							contest.RegStatus = RegistrationOpen
+						} else {
+							contest.RegStatus = RegistrationClosed
+						}
+					}
+				}
+			})
+		} else {
+			row.Find("td").Each(func(cellIndex int, cell *goquery.Selection) {
+				switch cellIndex {
+				case 0:
+					// remove all links from text
+					cell.Find(`a`).Remove()
+					contest.Name = clean(cell.Text())
+
+				case 1:
+					contest.StartTime = parseTime(clean(cell.Text()))
+
+				case 2:
+					contest.Duration = parseDuration(clean(cell.Text()))
+
+				case 4:
+					var description []string
+					cell.Find(`.small`).Each(func(_ int, val *goquery.Selection) {
+						description = append(description, clean(val.Text()))
+					})
+					contest.Description = description
+				}
+			})
+
+			contest.Writers = nil
+			contest.RegStatus = RegistrationNotExists
+			contest.RegCount = RegistrationNotExists
+		}
+
+		contests = append(contests, contest)
+	})
+	return contests, nil
+}
+
+// GetContests returns metadata of the given contest(s).
 //
 // Set 'pageCount' to the maximum number of pages to parse.
-// When parsing individual contests, set pageCount to 1.
 // Each page consists of 100 rows of data, except the first page,
 // which may contain additional upcoming contests data.
 func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
@@ -189,160 +206,125 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link, `tr[data-contestid]`)
+	p, err := loadPage(link)
 	if err != nil {
 		return nil, err
 	}
 
-	if msg != "" {
-		defer page.Close()
-		return nil, fmt.Errorf(msg)
+	if _, err := p.Race().Element(`#jGrowl .message`).Handle(handleErrMsg).
+		Element(`tr[data-contestid]`).Do(); err != nil {
+		p.Close()
+		return nil, err
 	}
-
 	// Wait till alls rows are loaded.
-	page.MustWaitLoad()
+	p.WaitLoad()
 
-	chanContests := make(chan []Contest, 5)
+	chanContests := make(chan []Contest)
 	go func() {
-		defer page.Close()
+		defer p.Close()
 		defer close(chanContests)
 
-		// parse contests from current page
-		parseFunc := func(parseFirstTable bool) []Contest {
-			contests := make([]Contest, 0)
-
-			doc := processHTML(page)
-			// WARNING! ugly code present below. View with caution.
-			table := doc.Selection
-			if parseFirstTable == false {
-				// exclude upcoming contests table
-				table = doc.Find(".datatable").Eq(1)
-			}
-			table = table.Find("tr[data-contestid]")
-			table.Each(func(_ int, row *goquery.Selection) {
-				// parse duration string (using ugly regex)
-				parseDuration := func(str string) time.Duration {
-					re := regexp.MustCompile(`(?:(\d+):)?(\d+):(\d+)`)
-					val := re.FindStringSubmatch(str)
-					d, _ := strconv.Atoi(val[1])
-					h, _ := strconv.Atoi(val[2])
-					m, _ := strconv.Atoi(val[3])
-					return time.Duration(d*1440+h*60+m) * time.Minute
-				}
-
-				var contestRow Contest
-				// extract contest args from html attr label
-				contArg, _ := Parse(arg.Group + row.AttrOr("data-contestid", ""))
-				if arg.Contest != "" && arg.Contest != contArg.Contest {
-					// contest id is specified to fetch. This contest doesn't match it.
-					return
-				}
-				contestRow.Arg = contArg
-
-				// the table format for contests is different from groups and gyms/contests.
-				if (arg.Class == ClassGym && arg.Contest != "") || (arg.Class == ClassContest) {
-					row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
-						switch cellIdx {
-						case 0:
-							// remove all links from text
-							cell.Find("a").Remove()
-							contestRow.Name = clean(cell.Text())
-
-						case 1:
-							writers := strings.Split(clean(cell.Text()), "\n")
-							if writers[0] == "" {
-								// no writers are specified. Set slice to nil
-								writers = nil
-							}
-
-							contestRow.Writers = writers
-
-						case 2:
-							startTime := parseTime(cell.Text())
-							contestRow.StartTime = startTime
-
-						case 3:
-							duration := parseDuration(cell.Text())
-							contestRow.Duration = duration
-
-						case 5:
-							cell.Find(".countdown").Remove()
-							if contArg.Class == ClassGym {
-								contestRow.RegStatus = RegistrationNotExists
-								contestRow.RegCount = RegistrationNotExists
-								description := strings.Split(clean(cell.Text()), "\n")
-								contestRow.Description = description
-							} else {
-								// extract registration count
-								cntStr := getText(cell, ".contestParticipantCountLinkMargin")
-								if len(cntStr) > 1 {
-									regCount, _ := strconv.Atoi(cntStr[1:])
-									contestRow.RegCount = regCount
-								}
-								// extract registration status
-								if cell.Find(".welldone").Length() != 0 {
-									contestRow.RegStatus = RegistrationDone
-								} else if cell.Find("a").Not("a[title]").Length() > 0 {
-									contestRow.RegStatus = RegistrationOpen
-								} else {
-									contestRow.RegStatus = RegistrationClosed
-								}
-							}
-						}
-					})
-				} else {
-					row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
-						switch cellIdx {
-						case 0:
-							// remove all links from text
-							cell.Find("a").Remove()
-							contestRow.Name = clean(cell.Text())
-
-						case 1:
-							startTime := parseTime(cell.Text())
-							contestRow.StartTime = startTime
-
-						case 2:
-							duration := parseDuration(cell.Text())
-							contestRow.Duration = duration
-
-						case 4:
-							var description []string
-							cell.Find(".small").Each(func(_ int, val *goquery.Selection) {
-								description = append(description, clean(val.Text()))
-							})
-							contestRow.Description = description
-						}
-					})
-
-					contestRow.Writers = nil
-					contestRow.RegCount = RegistrationNotExists
-					contestRow.RegStatus = RegistrationNotExists
-				}
-
-				contests = append(contests, contestRow)
-			})
-			return contests
-		}
-
-		// iterate till no more valid pages left
-		for isFirstPage := true; pageCount > 0; pageCount-- {
-			contests := parseFunc(isFirstPage || (arg.Class != ClassContest))
+		for ; pageCount > 0; pageCount-- {
+			// Ignore error, write whatever is parsed.
+			contests, _ := p.getContests(arg)
 			chanContests <- contests
-			isFirstPage = false
 
-			if !page.MustHasR(".pagination li a", "→") || pageCount < 2 {
-				// no more pages to parse
+			if !p.MustHasR(`.pagination li>a`, `→`) || pageCount == 1 {
+				// All pages parsed.
 				break
 			}
-			// click navigation button and wait elm is removed from view.
-			page.MustElementR(`.pagination li a`, "→").MustClick().WaitInvisible()
-			// Wait till table completely loads all rows.
-			page.MustElement(`tr[data-contestid]`)
-			page.MustWaitLoad()
+
+			// Move to the next page (click the next button).
+			p.MustElementR(`.pagination li>a`, `→`).MustClick().WaitInvisible()
+			p.WaitLoad()
+
+			// Remove upcoming contests table.
+			if arg.Class == ClassContest {
+				p.MustElements(`.contestList .datatable`).First().Remove()
+			}
 		}
 	}()
+
 	return chanContests, nil
+}
+
+func (p *page) getDashboard(arg Args) (Dashboard, error) {
+	pd := p.parse()
+
+	// Dashboard data is stored to this.
+	var dashboard Dashboard
+
+	dashboard.Name = pd.Find(".rtable th").Text()
+
+	// Extract countdown to contest end.
+	if countdownStr := pd.Find(`span.countdown>span`).AttrOr("title", ""); true {
+		if countdownStr == "" {
+			countdownStr = pd.Find(`span.countdown`).Text()
+		}
+
+		var h, m, s int
+		fmt.Sscanf(countdownStr, "%d:%d:%d", &h, &m, &s)
+		dashboard.Countdown = time.Duration(h*3600+m*60+s) * time.Second
+	}
+
+	problemsTable := pd.Find(`.problems tr`).Has(`td`)
+	problemsTable.Each(func(_ int, row *goquery.Selection) {
+		// Problem data is stored to this.
+		var problem Problem
+
+		problem.Arg, _ = Parse(hostURL + row.Find(`td a`).AttrOr(`href`, ``))
+		if arg.Problem != "" && arg.Problem != problem.Arg.Problem {
+			return
+		}
+
+		row.Find(`td`).Each(func(cellIndex int, cell *goquery.Selection) {
+			switch cellIndex {
+			case 1:
+				noticeSel := cell.Find(`.notice`)
+				// Extract time/memory limit data.
+				constraints := clean(noticeSel.Contents().Last().Text())
+				problem.TimeLimit = strings.Split(constraints, ", ")[0]
+				problem.MemoryLimit = strings.Split(constraints, ", ")[1]
+
+				// Extract input/output stream data.
+				if streamStr := clean(noticeSel.Find(`div`).Text()); streamStr == "standard input/output" {
+					problem.InpStream = "standard input"
+					problem.OutStream = "standard output"
+				} else {
+					problem.InpStream = clean(strings.Split(streamStr, "/")[0])
+					problem.OutStream = clean(strings.Split(streamStr, "/")[1])
+				}
+
+				problem.Name = clean(cell.Find("a").Text())
+
+			case 3:
+				if solveStr := clean(cell.Text()); len(solveStr) > 1 {
+					// Remove the 'x' prefix from the string.
+					problem.SolveCount, _ = strconv.Atoi(solveStr[1:])
+				}
+			}
+		})
+
+		// Extract solve status.
+		switch row.AttrOr(`class`, ``) {
+		case "accepted-problem":
+			problem.SolveStatus = SolveAccepted
+		case "rejected-problem":
+			problem.SolveStatus = SolveRejected
+		default:
+			problem.SolveStatus = SolveNotAttempted
+		}
+
+		dashboard.Problem = append(dashboard.Problem, problem)
+	})
+
+	// Create map to hold material links.
+	dashboard.Material = make(map[string]string)
+	pd.Find(`#sidebar li a`).Each(func(_ int, sel *goquery.Selection) {
+		dashboard.Material[hostURL+sel.AttrOr(`href`, ``)] = sel.Text()
+	})
+
+	return dashboard, nil
 }
 
 // GetDashboard returns in depth contest metadata from
@@ -351,101 +333,21 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 // Data returned by this function is user session specific,
 // as user interaction in the contest is parsed and returned.
 func (arg Args) GetDashboard() (Dashboard, error) {
-
 	link, err := arg.DashboardPage()
 	if err != nil {
 		return Dashboard{}, err
 	}
 
-	page, msg, err := loadPage(link, selCSSFooter)
+	p, err := loadPage(link)
 	if err != nil {
 		return Dashboard{}, err
 	}
-	defer page.Close()
+	defer p.Close()
 
-	if msg != "" {
-		return Dashboard{}, fmt.Errorf(msg)
+	if _, err := p.Race().Element(`#jGrowl .message`).Handle(handleErrMsg).
+		Element(`#footer`).Do(); err != nil {
+		return Dashboard{}, err
 	}
 
-	doc := processHTML(page)
-
-	var dashboard Dashboard
-	dashboard.Material = make(map[string]string)
-	// extract contest name
-	dashboard.Name = clean(doc.Find(".rtable th").Text())
-	// extract countdown to contest end
-	if true {
-		str := doc.Find("span.countdown>span").AttrOr("title", "")
-		if len(str) == 0 {
-			str = doc.Find("span.countdown").Text()
-		}
-
-		var h, m, s int
-		fmt.Sscanf(str, "%d:%d:%d", &h, &m, &s)
-		countdown := time.Duration(h*3600+m*60+s) * time.Second
-		dashboard.Countdown = countdown
-	}
-
-	// extract problems data
-	table := doc.Find(".problems tr").Has("td")
-	table.Each(func(_ int, row *goquery.Selection) {
-		var problemRow Problem
-
-		// what do I do if there is an error?
-		probArg, _ := Parse(hostURL + row.Find("td a").AttrOr("href", ""))
-		if arg.Problem != "" && arg.Problem != probArg.Problem {
-			return
-		}
-		problemRow.Arg = probArg
-
-		// extract solve status
-		switch row.AttrOr("class", "") {
-		case "accepted-problem":
-			problemRow.SolveStatus = SolveAccepted
-		case "rejected-problem":
-			problemRow.SolveStatus = SolveRejected
-		default:
-			problemRow.SolveStatus = SolveNotAttempted
-		}
-
-		row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
-			switch cellIdx {
-			case 1:
-				conSel := cell.Find(".notice")
-				// extract time/memory limit from problem
-				constraints := clean(conSel.Contents().Last().Text())
-				problemRow.TimeLimit = strings.Split(constraints, ", ")[0]
-				problemRow.MemoryLimit = strings.Split(constraints, ", ")[1]
-
-				// extract input/output stream.
-				if sval := getText(conSel, "div"); sval == "standard input/output" {
-					problemRow.InpStream = "standard input"
-					problemRow.OutStream = "standard output"
-				} else {
-					problemRow.InpStream = clean(strings.Split(sval, "/")[0])
-					problemRow.OutStream = clean(strings.Split(sval, "/")[1])
-				}
-
-				name := cell.Find("a").Text()
-				problemRow.Name = name
-
-			case 3:
-				solveCount := 0
-				if sval := clean(cell.Text()); len(sval) > 1 {
-					// remove the 'x' prefix from x123 count
-					solveCount, _ = strconv.Atoi(sval[1:])
-				}
-				problemRow.SolveCount = solveCount
-			}
-		})
-		dashboard.Problem = append(dashboard.Problem, problemRow)
-	})
-
-	// extract contest material
-	doc.Find("#sidebar li a").Each(func(_ int, data *goquery.Selection) {
-		href := data.AttrOr("href", "")
-		dashboard.Material[hostURL+href] = clean(data.Text())
-	})
-
-	return dashboard, nil
+	return p.getDashboard(arg)
 }

@@ -1,75 +1,41 @@
 package codeforces
 
 import (
-	"crypto/rand"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/cp-tools/cpt-lib/v2/util"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 )
 
-var (
-	selCSSNotif  = `.jGrowl-notification .message`
-	selCSSHandle = `#header a[href^="/profile/"]`
-	selCSSFooter = `#footer`
-	selCSSError  = `.error`
-)
-
-func loadPage(link string, selMatch ...string) (*rod.Page, string, error) {
-	// Load page and return error (if any).
-	page, err := Browser.Page(proto.TargetCreateTarget{URL: link})
-	if err != nil {
-		return nil, "", err
+func loadPage(link string) (*page, error) {
+	// Blocking these files results in faster page loading.
+	resourcesToBlock := []proto.NetworkResourceType{
+		proto.NetworkResourceTypeFont,
+		proto.NetworkResourceTypeMedia,
+		proto.NetworkResourceTypeImage,
+		proto.NetworkResourceTypeStylesheet,
 	}
 
-	// Disable CSS and Img in webpage.
-	router := page.HijackRequests()
-	router.MustAdd("*", func(h *rod.Hijack) {
-		if h.Request.Type() == proto.NetworkResourceTypeImage ||
-			h.Request.Type() == proto.NetworkResourceTypeFont ||
-			h.Request.Type() == proto.NetworkResourceTypeStylesheet ||
-			h.Request.Type() == proto.NetworkResourceTypeMedia {
-			h.Response.Fail(proto.NetworkErrorReasonBlockedByClient)
-			return
-		}
-		h.ContinueRequest(&proto.FetchContinueRequest{})
-	})
-	go router.Run()
-
-	selMatch = append([]string{selCSSNotif}, selMatch...)
-	elm := page.MustElement(selMatch...)
-
-	if page.MustInfo().URL != link {
-		// Race to select notif element (or page load).
-		loaded, found := make(chan bool), make(chan bool)
-		go func() { page.MustWaitLoad(); close(loaded) }()
-		go func() { page.Element(selCSSNotif); close(found) }()
-
-		select {
-		case <-found:
-			// There was a redirect (with an error message).
-			elm = page.MustElement(selCSSNotif)
-		case <-loaded:
-			// No error message found
-			break
-		}
-	}
-
-	if elm.MustMatches(selCSSNotif) {
-		return page, clean(elm.MustText()), nil
-	}
-	return page, "", nil
+	p, err := util.NewPage(Browser, link, resourcesToBlock)
+	return &page{p}, err
 }
 
-func processHTML(page *rod.Page) *goquery.Document {
-	doc, _ := goquery.NewDocumentFromReader(
-		strings.NewReader(page.MustElement("html").MustHTML()))
-	return doc
+func handleErrMsg(e *rod.Element) error {
+	// There should be no notification.
+	return fmt.Errorf(e.MustText())
+}
+
+func (p *page) parse() *goquery.Document {
+	pd, _ := goquery.NewDocumentFromReader(strings.NewReader(
+		p.MustElement(`html`).MustHTML()))
+	return pd
 }
 
 func clean(str string) string {
@@ -85,18 +51,6 @@ func clean(str string) string {
 	// replace any space character space
 	re = regexp.MustCompile(`\p{Z}`)
 	return re.ReplaceAllString(str, " ")
-}
-
-// getText extracts text from particular html data
-func getText(sel *goquery.Selection, query string) string {
-	str := sel.Find(query).Text()
-	return clean(str)
-}
-
-// getAttr extracts attribute valur of particular html data
-func getAttr(sel *goquery.Selection, query, attr string) string {
-	str := sel.Find(query).AttrOr(attr, "")
-	return clean(str)
 }
 
 // if the time string is invalid, returns time corresponding to
@@ -152,29 +106,4 @@ func parseTime(link string) time.Time {
 		tm = time.Unix(0, 0)
 	}
 	return tm.UTC()
-}
-
-// genRandomString generates a random string of length n.
-// Code copied from https://stackoverflow.com/a/9606036.
-func genRandomString(n int) string {
-	b := make([]byte, n)
-	rand.Read(b)
-	return fmt.Sprintf("%x", b)
-}
-
-func (arg *Args) setContestClass() {
-	if arg.Class != "" {
-		return
-	}
-
-	val, err := strconv.Atoi(arg.Contest)
-	if len(arg.Group) == 10 {
-		arg.Class = ClassGroup
-	} else if err == nil {
-		if val <= 100000 {
-			arg.Class = ClassContest
-		} else {
-			arg.Class = ClassGym
-		}
-	}
 }

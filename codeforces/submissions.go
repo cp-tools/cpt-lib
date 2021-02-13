@@ -1,11 +1,9 @@
 package codeforces
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/go-rod/rod"
 )
 
 type (
@@ -45,64 +43,71 @@ const (
 	VerdictPretestPass = 12 // Pretests passed
 )
 
-// SubmissionsPage returns link to user submissions page.
-func (arg Args) SubmissionsPage(handle string) (link string, err error) {
-	// Contest not specified.
-	if arg.Contest == "" {
-		if handle == "" {
-			// Extract handle from homepage.
-			// No actual login is done in below code.
-			var err error
-			if handle, err = login("", ""); err != nil {
-				return "", ErrInvalidSpecifier
+func (p *page) getSubmissions(arg Args) ([]Submission, error) {
+	pd := p.parse()
+
+	submissions := make([]Submission, 0)
+
+	submissionTableRows := pd.Find(`tr[data-submission-id]`)
+	submissionTableRows.Each(func(_ int, row *goquery.Selection) {
+		var submission Submission
+
+		submission.Arg, _ = Parse(hostURL + row.Find(`td`).Eq(3).Find(`a`).AttrOr(`href`, ``))
+		if arg.Problem != "" && arg.Problem != submission.Arg.Problem {
+			return
+		}
+
+		row.Find(`td`).Each(func(cellIndex int, cell *goquery.Selection) {
+			switch cellIndex {
+			case 0:
+				submission.ID = cell.Text()
+
+			case 1:
+				submission.When = parseTime(cell.Text())
+
+			case 2:
+				submission.Who = cell.Text()
+
+			case 4:
+				submission.Language = cell.Text()
+
+			case 5:
+				submission.Verdict = cell.Text()
+
+				verdictMap := map[string]int{
+					"OK":                      VerdictAC,
+					"WRONG_ANSWER":            VerdictWA,
+					"RUNTIME_ERROR":           VerdictRTE,
+					"COMPILATION_ERROR":       VerdictCE,
+					"TIME_LIMIT_EXCEEDED":     VerdictTLE,
+					"MEMORY_LIMIT_EXCEEDED":   VerdictMLE,
+					"IDLENESS_LIMIT_EXCEEDED": VerdictILE,
+					"CRASHED":                 VerdictDOJ,
+					"SKIPPED":                 VerdictSkip,
+					"CHALLENGED":              VerdictHack,
+				}
+
+				verdictStatus := cell.Find(`.submissionVerdictWrapper`).
+					AttrOr(`submissionverdict`, ``)
+				if v, ok := verdictMap[verdictStatus]; ok {
+					submission.VerdictStatus = v
+					submission.IsJudging = false
+				} else {
+					submission.IsJudging = true
+				}
+
+			case 6:
+				submission.Time = cell.Text()
+
+			case 7:
+				submission.Memory = cell.Text()
 			}
-		}
+		})
 
-		link = fmt.Sprintf("%v/submissions/%v", hostURL, handle)
-		return
-	}
+		submissions = append(submissions, submission)
+	})
 
-	switch arg.Class {
-	case ClassGroup:
-		if handle != "" {
-			// Fetching others submissions not possible.
-			return "", ErrInvalidSpecifier
-		}
-
-		link = fmt.Sprintf("%v/group/%v/contest/%v/my", hostURL, arg.Group, arg.Contest)
-
-	case ClassContest, ClassGym:
-		if handle == "" {
-			link = fmt.Sprintf("%v/%v/%v/my", hostURL, arg.Class, arg.Contest)
-		} else {
-			link = fmt.Sprintf("%v/submissions/%v/%v/%v", hostURL, handle, arg.Class, arg.Contest)
-		}
-
-	default:
-		return "", ErrInvalidSpecifier
-	}
-
-	return
-}
-
-// SourceCodePage returns link to solution submission code.
-func (sub Submission) SourceCodePage() (link string, err error) {
-	if sub.ID == "" || sub.Arg.Contest == "" {
-		return "", ErrInvalidSpecifier
-	}
-
-	switch sub.Arg.Class {
-	case ClassGroup:
-		link = fmt.Sprintf("%v/group/%v/contest/%v/submission/%v", hostURL, sub.Arg.Group, sub.Arg.Contest, sub.ID)
-
-	case ClassContest, ClassGym:
-		link = fmt.Sprintf("%v/%v/%v/submission/%v", hostURL, sub.Arg.Class, sub.Arg.Contest, sub.ID)
-
-	default:
-		return "", ErrInvalidSpecifier
-	}
-
-	return
+	return submissions, nil
 }
 
 // GetSubmissions returns submissions metadata of given user.
@@ -120,53 +125,66 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link, `tr[data-submission-id]`)
+	p, err := loadPage(link)
 	if err != nil {
 		return nil, err
 	}
 
-	if msg != "" {
-		defer page.Close()
-		return nil, fmt.Errorf(msg)
+	if _, err := p.Race().Element(`#jGrowl .message`).Handle(handleErrMsg).
+		Element(`tr[data-submission-id]`).Do(); err != nil {
+		p.Close()
+		return nil, err
 	}
+
 	// Wait till alls rows are loaded.
-	page.MustWaitLoad()
+	p.MustWaitLoad()
 
 	// @todo Add support for excluding unofficial submissions
 
 	// create buffered channel for submissions
-	chanSubmissions := make(chan []Submission, 10)
+	chanSubmissions := make(chan []Submission)
 	go func() {
-		defer page.Close()
+		defer p.Close()
 		defer close(chanSubmissions)
 
-		if pageCount == 1 {
-			// loop till 'isDone' is true
-			for true {
-				submissions, isDone := arg.parseSubmissions(page)
-				chanSubmissions <- submissions
-				if isDone == true {
-					break
-				}
-				time.Sleep(time.Millisecond * 350)
-				page.MustReload().MustWaitLoad()
-			}
-		} else {
-			// iterate till no more valid required pages left
-			for ; pageCount > 0; pageCount-- {
-				submissions, _ := arg.parseSubmissions(page)
-				chanSubmissions <- submissions
+		// Only one page to parse. Keep parsing till all verdicts are declared.
+		for timer := time.Now(); pageCount == 1; time.Sleep(time.Millisecond * 400) {
+			// Keep parsing verdict till
+			// all submission verdicts are finalised.
+			submissions, _ := p.getSubmissions(arg)
+			chanSubmissions <- submissions
 
-				if !page.MustHasR(".pagination li a", "→") || pageCount < 2 {
-					// no more pages to parse
-					break
-				}
-				// click navigation button and wait till loads
-				page.MustElementR(".pagination li a", "→").MustClick().WaitInvisible()
-				// Wait till all rows of table are loaded.
-				page.MustElement(`tr[data-submission-id]`)
-				page.MustWaitLoad()
+			IsJudging := false
+			for _, sub := range submissions {
+				IsJudging = (IsJudging || sub.IsJudging)
 			}
+			if !IsJudging {
+				break
+			}
+
+			if time.Since(timer) > 2*time.Second {
+				// Reload the page every 2 seconds.
+				// This is to handle websocket failure
+				// and completion of judgement in WA case.
+				p.MustReload().MustWaitLoad()
+				timer = time.Now()
+			}
+		}
+
+		// Parse each page (without waiting for judgement to complete).
+		for ; pageCount > 0; pageCount-- {
+			// Ignore error, write whatever is parsed.
+			submissions, _ := p.getSubmissions(arg)
+			chanSubmissions <- submissions
+
+			if !p.MustHasR(`.pagination li>a`, `→`) || pageCount == 1 {
+				// All pages parsed.
+				break
+			}
+
+			// Move to the next page (click the next button).
+			p.MustElementR(`.pagination li>a`, `→`).MustClick().WaitInvisible()
+			p.WaitLoad()
 		}
 	}()
 	return chanSubmissions, nil
@@ -174,109 +192,23 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 
 // GetSourceCode returns submission code of given submission.
 func (sub Submission) GetSourceCode() (string, error) {
-
 	link, err := sub.SourceCodePage()
 	if err != nil {
 		return "", err
 	}
 
-	page, msg, err := loadPage(link, `#program-source-text`)
+	p, err := loadPage(link)
 	if err != nil {
 		return "", err
 	}
-	defer page.Close()
+	defer p.Close()
 
-	if msg != "" {
-		return "", fmt.Errorf(msg)
+	if _, err := p.Race().Element(`#jGrowl .message`).Handle(handleErrMsg).
+		Element(`#program-source-text`).Do(); err != nil {
+		return "", err
 	}
 
-	// extract source code from html body
-	source := page.MustEval(`Codeforces.filterClipboardText(
+	sourceCode := p.MustEval(`Codeforces.filterClipboardText(
 		document.querySelector("#program-source-text").innerText)`).String()
-	return source, nil
-}
-
-// parse specified submissions from current page.
-func (arg Args) parseSubmissions(page *rod.Page) ([]Submission, bool) {
-	submissions := make([]Submission, 0)
-	isDone := true
-
-	doc := processHTML(page)
-	// WARNING! ugly extraction code ahead. Don't peep XD
-	table := doc.Find("tr[data-submission-id]")
-	table.Each(func(_ int, row *goquery.Selection) {
-		var submissionRow Submission
-		// extract contest args from html attr label
-		subArg, _ := Parse(hostURL + getAttr(row, "td:nth-of-type(4) a", "href"))
-		if arg.Problem != "" && arg.Problem != subArg.Problem {
-			return
-		}
-		submissionRow.Arg = subArg
-
-		row.Find("td").Each(func(cellIdx int, cell *goquery.Selection) {
-			switch cellIdx {
-			case 0:
-				id := clean(cell.Text())
-				submissionRow.ID = id
-
-			case 1:
-				when := parseTime(clean(cell.Text()))
-				submissionRow.When = when
-
-			case 2:
-				who := clean(cell.Text())
-				submissionRow.Who = who
-
-			case 3:
-				problem := clean(cell.Text())
-				submissionRow.Problem = problem
-
-			case 4:
-				language := clean(cell.Text())
-				submissionRow.Language = language
-
-			case 5:
-				verdict := clean(cell.Text())
-				submissionRow.Verdict = verdict
-
-				verdictMap := map[string]int{
-					"OK":                      VerdictAC,
-					"WRONG_ANSWER":            VerdictWA,
-					"RUNTIME_ERROR":           VerdictRTE,
-					"COMPILATION_ERROR":       VerdictCE,
-					"TIME_LIMIT_EXCEEDED":     VerdictTLE,
-					"MEMORY_LIMIT_EXCEEDED":   VerdictMLE,
-					"IDLENESS_LIMIT_EXCEEDED": VerdictILE,
-					"CRASHED":                 VerdictDOJ,
-					"SKIPPED":                 VerdictSkip,
-					"CHALLENGED":              VerdictHack,
-					// "Pretests passed":         VerdictPretestPass,
-				}
-
-				verdictStatus := cell.Find(".submissionVerdictWrapper").
-					AttrOr("submissionverdict", "")
-				if v, ok := verdictMap[verdictStatus]; ok {
-					submissionRow.VerdictStatus = v
-					submissionRow.IsJudging = false
-				} else {
-					submissionRow.IsJudging = true
-				}
-
-				if submissionRow.IsJudging == true {
-					isDone = false
-				}
-
-			case 6:
-				time := clean(cell.Text())
-				submissionRow.Time = time
-
-			case 7:
-				memory := clean(cell.Text())
-				submissionRow.Memory = memory
-			}
-		})
-		submissions = append(submissions, submissionRow)
-	})
-
-	return submissions, isDone
+	return sourceCode, nil
 }

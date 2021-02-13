@@ -37,36 +37,46 @@ const (
 	SolveNotAttempted = -1
 )
 
-// ProblemsPage returns link to problem(s) page in contest.
-func (arg Args) ProblemsPage() (link string, err error) {
-	if arg.Contest == "" {
-		return "", ErrInvalidSpecifier
-	}
+func (p *page) getProblems(arg Args) ([]Problem, error) {
+	pd := p.parse()
 
-	switch arg.Class {
-	case ClassGroup:
-		if arg.Group == "" {
-			return "", ErrInvalidSpecifier
+	problems := make([]Problem, 0)
+
+	problemsTable := pd.Find(`.problemindexholder`)
+	problemsTable.Each(func(_ int, row *goquery.Selection) {
+		var problem Problem
+
+		problem.Arg, _ = Parse(arg.Group + arg.Contest + row.AttrOr("problemindex", ""))
+
+		// Extract sample test cases of problem.
+		for i, sampleInput, sampleOutput := 0, row.Find(`.input>pre`),
+			row.Find(`.output>pre`); i < sampleInput.Length(); i++ {
+
+			inpStr := p.MustEval(
+				fmt.Sprintf("document.querySelector(\"#%v\").innerText",
+					sampleInput.Eq(i).AttrOr(`id`, ``))).String()
+
+			outStr := p.MustEval(
+				fmt.Sprintf("document.querySelector(\"#%v\").innerText",
+					sampleOutput.Eq(i).AttrOr(`id`, ``))).String()
+
+			problem.SampleTests = append(problem.SampleTests, SampleTest{
+				Input: inpStr, Output: outStr,
+			})
 		}
 
-		if arg.Problem == "" {
-			link = fmt.Sprintf("%v/group/%v/contest/%v/problems", hostURL, arg.Group, arg.Contest)
-		} else {
-			link = fmt.Sprintf("%v/group/%v/contest/%v/problem/%v", hostURL, arg.Group, arg.Contest, arg.Problem)
-		}
+		header := row.Find(`.header`)
+		// Bulk extract rest of the data from header.
+		problem.Name = clean(header.Find(`.title`).Text())
+		problem.TimeLimit = clean(header.Find(`.time-limit`).Contents().Last().Text())
+		problem.MemoryLimit = clean(header.Find(`.memory-limit`).Contents().Last().Text())
+		problem.InpStream = clean(header.Find(".input-file").Contents().Last().Text())
+		problem.OutStream = clean(header.Find(".output-file").Contents().Last().Text())
 
-	case ClassContest, ClassGym:
-		if arg.Problem == "" {
-			link = fmt.Sprintf("%v/%v/%v/problems", hostURL, arg.Class, arg.Contest)
-		} else {
-			link = fmt.Sprintf("%v/%v/%v/problem/%v", hostURL, arg.Class, arg.Contest, arg.Problem)
-		}
+		problems = append(problems, problem)
+	})
 
-	default:
-		return "", ErrInvalidSpecifier
-	}
-
-	return
+	return problems, nil
 }
 
 // GetProblems returns problem(s) meta data, along with sample tests.
@@ -79,54 +89,26 @@ func (arg Args) ProblemsPage() (link string, err error) {
 // SolveStatus and SolveCount are not parsed by this.
 // Use GetDashboard() if you require these fields.
 func (arg Args) GetProblems() ([]Problem, error) {
-
 	link, err := arg.ProblemsPage()
 	if err != nil {
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link, `.problemindexholder`)
+	p, err := loadPage(link)
 	if err != nil {
 		return nil, err
 	}
-	defer page.Close()
+	defer p.Close()
 
-	if msg != "" {
-		return nil, fmt.Errorf(msg)
+	if _, err := p.Race().Element(`#jGrowl .message`).Handle(handleErrMsg).
+		Element(`.problemindexholder`).Do(); err != nil {
+		return nil, err
 	}
 
-	doc := processHTML(page)
+	// Wait till all problems have loaded.
+	p.WaitLoad()
 
-	// to hold problem data
-	var probs []Problem
-	table := doc.Find(".problemindexholder")
-	table.Each(func(_ int, row *goquery.Selection) {
-		probArg, _ := Parse(arg.Group + arg.Contest + row.AttrOr("problemindex", ""))
-
-		// sample tests of problem
-		var sampleTests []SampleTest
-		inp, out := row.Find(".input"), row.Find(".output")
-		for i := 0; i < inp.Length(); i++ {
-			inpStr, _ := inp.Find("pre").Eq(i).Html()
-			outStr, _ := out.Find("pre").Eq(i).Html()
-			sampleTests = append(sampleTests, SampleTest{
-				Input:  clean(inpStr) + "\n",
-				Output: clean(outStr) + "\n",
-			})
-		}
-
-		header := row.Find(".header")
-		probs = append(probs, Problem{
-			Name:        getText(header, ".title"),
-			TimeLimit:   clean(header.Find(".time-limit").Contents().Last().Text()),
-			MemoryLimit: clean(header.Find(".memory-limit").Contents().Last().Text()),
-			InpStream:   clean(header.Find(".input-file").Contents().Last().Text()),
-			OutStream:   clean(header.Find(".output-file").Contents().Last().Text()),
-			SampleTests: sampleTests,
-			Arg:         probArg,
-		})
-	})
-	return probs, nil
+	return p.getProblems(arg)
 }
 
 // SubmitSolution submits given file to the judging server,
@@ -143,12 +125,12 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 	}
 
 	if _, ok := LanguageID[langName]; !ok {
-		return nil, fmt.Errorf("Invalid language")
+		return nil, fmt.Errorf("invalid language")
 	}
 
 	// check if given file exists
 	if fl, err := os.Stat(file); os.IsNotExist(err) || fl.IsDir() {
-		return nil, fmt.Errorf("Invalid file path")
+		return nil, fmt.Errorf("invalid file path")
 	}
 
 	link, err := arg.ProblemsPage()
@@ -156,63 +138,75 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 		return nil, err
 	}
 
-	page, msg, err := loadPage(link, selCSSFooter)
+	p, err := loadPage(link)
 	if err != nil {
 		return nil, err
 	}
 
-	if msg != "" {
-		defer page.Close()
-		return nil, fmt.Errorf(msg)
+	if _, err := p.Race().Element(`#jGrowl .message`).Handle(handleErrMsg).
+		Element(`#footer`).Do(); err != nil {
+		p.Close()
+		return nil, err
 	}
 
-	// check if user is logged in
-	if !page.MustHas(selCSSHandle) {
-		defer page.Close()
-		return nil, fmt.Errorf("No logged in session present")
+	// Check if user is logged in.
+	if !p.MustHas(`#header a[href^="/profile/"]`) {
+		p.Close()
+		return nil, fmt.Errorf("no logged in session present")
 	}
 
-	// check if submitting is possible at all.
-	if !page.MustHas(`input.submit`) {
-		defer page.Close()
-		return nil, fmt.Errorf("Problem not open for submission")
+	// Check if submitting is possible at all.
+	if !p.MustHas(`input.submit`) {
+		p.Close()
+		return nil, fmt.Errorf("problem not open for submission")
 	}
 
-	// check if specified language can be selected
-	// if this is allowed, so is submitting.
-	if !page.MustHasR(`select>option[value]`, regexp.QuoteMeta(langName)) {
-		defer page.Close()
-		return nil, fmt.Errorf("Language not allowed in problem")
+	// Check if specified language can be selected.
+	// If this is allowed, so is submitting.
+	if !p.MustHasR(`select>option[value]`, regexp.QuoteMeta(langName)) {
+		p.Close()
+		return nil, fmt.Errorf("language not allowed in problem")
 	}
 
-	// do the submitting here! (really simple)
-	page.MustElement(`select[name="programTypeId"]`).MustSelect(langName)
-	page.MustElement(`input[name="sourceFile"]`).MustSetFiles(file)
-	page.MustElement(`input.submit`).MustClick()
+	// All cases have been handled. Submit the solution.
+	p.MustElement(`select[name="programTypeId"]`).MustSelect(langName)
+	p.MustElement(`input[name="sourceFile"]`).MustSetFiles(file)
+	p.MustElement(`input.submit`).MustClick().WaitInvisible()
 
-	elm := page.MustElement(selCSSError, `tr[data-submission-id]`)
-
-	if elm.MustMatches(selCSSError) {
-		// static error message (exact submission done before)
-		defer page.Close()
-		msg := clean(elm.MustText())
-		return nil, fmt.Errorf(msg)
+	if _, err := p.Race().Element(`.error`).Handle(handleErrMsg).
+		Element(`tr[data-submission-id]`).Do(); err != nil {
+		// Example error message: "exact submission done before"
+		p.Close()
+		return nil, err
 	}
 
-	// return live progress of submission
+	// Realtime verdict of submission.
 	chanSubmission := make(chan Submission, 500)
 	go func() {
-		defer page.Close()
+		defer p.Close()
 		defer close(chanSubmission)
 
 		for true {
-			submissions, _ := arg.parseSubmissions(page)
-			chanSubmission <- submissions[0]
-			if submissions[0].IsJudging == false {
+
+		}
+		for timer := time.Now(); ; time.Sleep(time.Millisecond * 400) {
+			submissions, _ := p.getSubmissions(arg)
+			if len(submissions) == 0 {
 				break
 			}
-			time.Sleep(time.Millisecond * 350)
-			page.MustReload().MustWaitLoad()
+
+			chanSubmission <- submissions[0]
+			if !submissions[0].IsJudging {
+				break
+			}
+
+			if time.Since(timer) > 2*time.Second {
+				// Reload the page every 2 seconds.
+				// This is to handle websocket failure
+				// and completion of judgement in WA case.
+				p.MustReload().MustWaitLoad()
+				timer = time.Now()
+			}
 		}
 	}()
 

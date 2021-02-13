@@ -10,7 +10,7 @@ import (
 )
 
 // NewBrowser initiates the automated browser to use.
-func NewBrowser(headless bool, userDataDir, bin string) (*rod.Browser, error) {
+func NewBrowser(headless bool, userDataDir, bin, cacheDir string) (*rod.Browser, error) {
 	// Launch browser.
 	launchBrowser := func(controlURL string) (*rod.Browser, error) {
 		b := rod.New().ControlURL(controlURL)
@@ -21,8 +21,7 @@ func NewBrowser(headless bool, userDataDir, bin string) (*rod.Browser, error) {
 	}
 
 	// Store data in cache (to reduce time).
-	cacheDir, _ := os.UserCacheDir()
-	cacheUserDataDir := filepath.Join(cacheDir, "cp-tools", "cpt-lib", bin)
+	cacheUserDataDir := filepath.Join(cacheDir, bin)
 
 	// Initiate the browser to use.
 	l := launcher.New().
@@ -41,7 +40,7 @@ func NewBrowser(headless bool, userDataDir, bin string) (*rod.Browser, error) {
 	}
 
 	// Load temporary browser to extract cookies only if path exists.
-	if file, err := os.Stat(userDataDir); err == nil && file.IsDir() {
+	if file, err := os.Stat(userDataDir); userDataDir != "" && err == nil && file.IsDir() {
 		// Initiate browser to extract cookies from.
 		cookiesl := launcher.NewUserMode().
 			UserDataDir(userDataDir).
