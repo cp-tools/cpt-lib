@@ -181,14 +181,11 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 	}
 
 	// Realtime verdict of submission.
-	chanSubmission := make(chan Submission, 500)
+	chanSubmission := make(chan Submission)
 	go func() {
 		defer p.Close()
 		defer close(chanSubmission)
 
-		for true {
-
-		}
 		for timer := time.Now(); ; time.Sleep(time.Millisecond * 400) {
 			submissions, _ := p.getSubmissions(arg)
 			if len(submissions) == 0 {
