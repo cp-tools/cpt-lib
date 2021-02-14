@@ -203,7 +203,7 @@ func TestArgs_GetSubmissions(t *testing.T) {
 					Who:           "cp-tools",
 					Problem:       "A - Watermelon",
 					Language:      "GNU C++17",
-					Verdict:       "Happy New Year!",
+					Verdict:       "Accepted",
 					VerdictStatus: VerdictAC,
 					Time:          "62 ms",
 					Memory:        "0 KB",
