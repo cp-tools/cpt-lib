@@ -369,6 +369,13 @@ func TestArgs_submissionsPage(t *testing.T) {
 			want:    "",
 			wantErr: true,
 		},
+		{
+			name:    "Test #9",
+			arg:     Args{},
+			args:    args{""},
+			want:    "https://codeforces.com/submissions/cp-tools",
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

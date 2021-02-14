@@ -137,13 +137,8 @@ func Parse(str string) (Args, error) {
 				break
 			case len(arg.Group) == 10:
 				arg.Class = ClassGroup
-			case len(arg.Group) != 0:
-				return Args{}, ErrInvalidSpecifier
 			default:
-				val, err := strconv.Atoi(arg.Contest)
-				switch {
-				case err != nil:
-					return Args{}, ErrInvalidSpecifier
+				switch val, _ := strconv.Atoi(arg.Contest); {
 				case val <= 1e5:
 					arg.Class = ClassContest
 				default:
