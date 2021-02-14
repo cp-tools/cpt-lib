@@ -1,6 +1,8 @@
 package codeforces
 
 import (
+	"crypto/rand"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
@@ -8,84 +10,8 @@ import (
 	"time"
 )
 
-func TestArgs_problemsPage(t *testing.T) {
-	tests := []struct {
-		name    string
-		arg     Args
-		want    string
-		wantErr bool
-	}{
-		{
-			name:    "Test #1",
-			arg:     Args{"1", "", "contest", ""},
-			want:    "https://codeforces.com/contest/1/problems",
-			wantErr: false,
-		},
-		{
-			name:    "Test #2",
-			arg:     Args{"4", "b", "contest", ""},
-			want:    "https://codeforces.com/contest/4/problem/b",
-			wantErr: false,
-		},
-		{
-			name:    "Test #3",
-			arg:     Args{"102341", "", "gym", ""},
-			want:    "https://codeforces.com/gym/102341/problems",
-			wantErr: false,
-		},
-		{
-			name:    "Test #4",
-			arg:     Args{"102323", "a", "gym", ""},
-			want:    "https://codeforces.com/gym/102323/problem/a",
-			wantErr: false,
-		},
-		{
-			name:    "Test #5",
-			arg:     Args{"283855", "", "group", "bK73bvp3d7"},
-			want:    "https://codeforces.com/group/bK73bvp3d7/contest/283855/problems",
-			wantErr: false,
-		},
-		{
-			name:    "Test #6",
-			arg:     Args{"283855", "c", "group", "bK73bvp3d7"},
-			want:    "https://codeforces.com/group/bK73bvp3d7/contest/283855/problem/c",
-			wantErr: false,
-		},
-		{
-			name:    "Test #7",
-			arg:     Args{},
-			want:    "",
-			wantErr: true,
-		},
-		{
-			name:    "Test #8",
-			arg:     Args{"283855", "", "group", ""},
-			want:    "",
-			wantErr: true,
-		},
-		{
-			name:    "Test #9",
-			arg:     Args{"45", "d", "invalid", ""},
-			want:    "",
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.arg.ProblemsPage()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Args.problemsPage() error = %v, wantErr %v", err, tt.wantErr)
-			}
-
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Args.problemsPage() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestArgs_GetProblems(t *testing.T) {
-	time.Sleep(time.Second * 10)
+	//time.Sleep(time.Second * 10)
 
 	tests := []struct {
 		name    string
@@ -124,7 +50,7 @@ func TestArgs_GetProblems(t *testing.T) {
 						},
 						{
 							Input:  "2 5\n0 1\n3 5\n",
-							Output: "YES\n1 4\n",
+							Output: "YES\n1 4 ",
 						},
 					},
 					Arg: Args{"4", "b", "contest", ""},
@@ -156,11 +82,11 @@ func TestArgs_GetProblems(t *testing.T) {
 					SampleTests: []SampleTest{
 						{
 							Input:  "2 1 1\n2 2\n2 2\n",
-							Output: "1\n1\n",
+							Output: "1\n1 \n",
 						},
 						{
 							Input:  "3 3 3\n5 4\n12 11\n9 8\n",
-							Output: "3\n1 3 2\n",
+							Output: "3\n1 3 2 \n",
 						},
 					},
 					Arg: Args{"4", "d", "contest", ""},
@@ -260,11 +186,11 @@ func TestArgs_GetProblems(t *testing.T) {
 					SampleTests: []SampleTest{
 						{
 							Input:  "4\n1 s\n2 a\n3 s\n",
-							Output: "3 1 1 0\n",
+							Output: "3 1 1 0 ",
 						},
 						{
 							Input:  "5\n1 a\n2 z\n1 a\n4 z\n",
-							Output: "4 1 0 1 0\n",
+							Output: "4 1 0 1 0 ",
 						},
 					},
 					Arg: Args{"101189", "d", "gym", ""},
@@ -444,7 +370,7 @@ func TestArgs_GetProblems(t *testing.T) {
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Args.GetProblems() = %v, want %v", got, tt.want)
+				t.Errorf("Args.GetProblems() = %#v, want %#v", got, tt.want)
 			}
 		})
 	}
@@ -536,4 +462,12 @@ func TestArgs_SubmitSolution(t *testing.T) {
 
 		})
 	}
+}
+
+// genRandomString generates a random string of length n.
+// Code copied from https://stackoverflow.com/a/9606036.
+func genRandomString(n int) string {
+	b := make([]byte, n)
+	rand.Read(b)
+	return fmt.Sprintf("%x", b)
 }

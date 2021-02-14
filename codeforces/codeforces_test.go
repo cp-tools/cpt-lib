@@ -9,6 +9,40 @@ import (
 	"github.com/joho/godotenv"
 )
 
+func login(usr, passwd string) (string, error) {
+	p, err := loadPage(fmt.Sprintf("%v/enter", hostURL))
+	if err != nil {
+		return "", err
+	}
+	defer p.Close()
+
+	if _, err := p.Race().Element(`#jGrowl .message`).Handle(handleErrMsg).
+		Element(`#footer`).Do(); err != nil {
+		return "", err
+	}
+
+	// Check if current user sesion is logged in.
+	if elm := p.MustElements(`#header a[href^="/profile/"]`).First(); elm != nil {
+		return elm.MustText(), nil
+	}
+
+	// Otherwise, login.
+	p.MustElement("#handleOrEmail").Input(usr)
+	p.MustElement("#password").Input(passwd)
+	if p.MustElement("#remember").MustProperty("checked").Bool() == false {
+		p.MustElement("#remember").MustClick()
+	}
+	p.MustElement(".submit").MustClick().WaitInvisible()
+
+	elm, err := p.Race().Element(`.error`).Handle(handleErrMsg).
+		Element(`#header a[href^="/profile/"]`).Do()
+	if err != nil {
+		return "", err
+	}
+
+	return elm.MustText(), nil
+}
+
 func getLoginCredentials() (string, string) {
 	// setup login access to use
 	usr := os.Getenv("CODEFORCES_USERNAME")
@@ -22,17 +56,74 @@ func TestMain(m *testing.M) {
 
 	_, browserHeadless := os.LookupEnv("BROWSER_HEADLESS")
 	browserBin := os.Getenv("BROWSER_BINARY")
-	Start(browserHeadless, "", browserBin)
+	if err := StartWithCacheDir(browserHeadless, "", browserBin, "tmp"); err != nil {
+		fmt.Println("Failed to start browser:", err)
+		os.Exit(1)
+	}
 
-	if _, err := login(getLoginCredentials()); err != nil {
+	if handle, err := login(getLoginCredentials()); err != nil {
 		fmt.Println("Login failed:", err)
 		Browser.Close()
 		os.Exit(1)
+	} else {
+		fmt.Println("Logged in user:", handle)
 	}
 	exitCode := m.Run()
 
 	Browser.Close()
+
 	os.Exit(exitCode)
+}
+
+func TestArgs_String(t *testing.T) {
+	tests := []struct {
+		name string
+		arg  Args
+		want string
+	}{
+		{
+			name: "Test #1",
+			arg:  Args{"1234", "", "contest", ""},
+			want: "1234 (contest)",
+		},
+		{
+			name: "Test #2",
+			arg:  Args{"1234", "b", "contest", ""},
+			want: "1234 b (contest)",
+		},
+		{
+			name: "Test #3",
+			arg:  Args{"100522", "", "gym", ""},
+			want: "100522 (gym)",
+		},
+		{
+			name: "Test #4",
+			arg:  Args{"100522", "f1", "gym", ""},
+			want: "100522 f1 (gym)",
+		},
+		{
+			name: "Test #5",
+			arg:  Args{"201468", "", "group", "Qvv4lz52cT"},
+			want: "201468 (group/Qvv4lz52cT)",
+		},
+		{
+			name: "Test #6",
+			arg:  Args{"201468", "c1", "group", "Qvv4lz52cT"},
+			want: "201468 c1 (group/Qvv4lz52cT)",
+		},
+		{
+			name: "Test #7",
+			arg:  Args{},
+			want: "",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.arg.String(); got != tt.want {
+				t.Errorf("Args.String() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
 
 func TestParse(t *testing.T) {
@@ -160,99 +251,4 @@ func TestParse(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestArgs_String(t *testing.T) {
-	tests := []struct {
-		name string
-		arg  Args
-		want string
-	}{
-		{
-			name: "Test #1",
-			arg:  Args{"1234", "", "contest", ""},
-			want: "1234 (contest)",
-		},
-		{
-			name: "Test #2",
-			arg:  Args{"1234", "b", "contest", ""},
-			want: "1234 b (contest)",
-		},
-		{
-			name: "Test #3",
-			arg:  Args{"100522", "", "gym", ""},
-			want: "100522 (gym)",
-		},
-		{
-			name: "Test #4",
-			arg:  Args{"100522", "f1", "gym", ""},
-			want: "100522 f1 (gym)",
-		},
-		{
-			name: "Test #5",
-			arg:  Args{"201468", "", "group", "Qvv4lz52cT"},
-			want: "201468 (group/Qvv4lz52cT)",
-		},
-		{
-			name: "Test #6",
-			arg:  Args{"201468", "c1", "group", "Qvv4lz52cT"},
-			want: "201468 c1 (group/Qvv4lz52cT)",
-		},
-		{
-			name: "Test #7",
-			arg:  Args{},
-			want: "",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.arg.String(); got != tt.want {
-				t.Errorf("Args.String() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_login(t *testing.T) {
-	logout()
-
-	type args struct {
-		usr    string
-		passwd string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
-	}{
-		{
-			name:    "Test #1",
-			args:    args{"cp-tools", "PleaseTryAgain"},
-			want:    "",
-			wantErr: true,
-		},
-		{
-			name:    "Test #2",
-			args:    args{"", ""},
-			want:    "",
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := login(tt.args.usr, tt.args.passwd)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("login() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("login() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-
-	// hope nothing goes wrong.
-	logout()
-	login(getLoginCredentials())
 }
