@@ -82,6 +82,12 @@ func (arg Args) GetCountdown() (time.Duration, error) {
 		return 0, err
 	}
 
+	if p.MustInfo().URL != link {
+		// An unexpected redirect occurred.
+		// Return error notification.
+		return 0, handleErrMsg(p.MustElement(`#jGrowl .message`))
+	}
+
 	return p.getCountdown()
 }
 
@@ -216,6 +222,13 @@ func (arg Args) GetContests(pageCount uint) (<-chan []Contest, error) {
 		p.Close()
 		return nil, err
 	}
+
+	if p.MustInfo().URL != link {
+		// An unexpected redirect occurred.
+		// Return error notification.
+		return nil, handleErrMsg(p.MustElement(`#jGrowl .message`))
+	}
+
 	// Wait till alls rows are loaded.
 	p.WaitLoad()
 
@@ -347,6 +360,12 @@ func (arg Args) GetDashboard() (Dashboard, error) {
 	if _, err := p.Race().Element(`#jGrowl .message`).Handle(handleErrMsg).
 		Element(`#footer`).Do(); err != nil {
 		return Dashboard{}, err
+	}
+
+	if p.MustInfo().URL != link {
+		// An unexpected redirect occurred.
+		// Return error notification.
+		return Dashboard{}, handleErrMsg(p.MustElement(`#jGrowl .message`))
 	}
 
 	return p.getDashboard(arg)

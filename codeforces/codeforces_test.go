@@ -71,7 +71,6 @@ func TestMain(m *testing.M) {
 	exitCode := m.Run()
 
 	Browser.Close()
-	os.RemoveAll("tmp")
 
 	os.Exit(exitCode)
 }

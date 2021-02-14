@@ -60,19 +60,22 @@ func (p *page) getSubmissions(arg Args) ([]Submission, error) {
 		row.Find(`td`).Each(func(cellIndex int, cell *goquery.Selection) {
 			switch cellIndex {
 			case 0:
-				submission.ID = cell.Text()
+				submission.ID = clean(cell.Text())
 
 			case 1:
 				submission.When = parseTime(cell.Text())
 
 			case 2:
-				submission.Who = cell.Text()
+				submission.Who = clean(cell.Text())
+
+			case 3:
+				submission.Problem = clean(cell.Text())
 
 			case 4:
-				submission.Language = cell.Text()
+				submission.Language = clean(cell.Text())
 
 			case 5:
-				submission.Verdict = cell.Text()
+				submission.Verdict = clean(cell.Text())
 
 				verdictMap := map[string]int{
 					"OK":                      VerdictAC,
@@ -97,10 +100,10 @@ func (p *page) getSubmissions(arg Args) ([]Submission, error) {
 				}
 
 			case 6:
-				submission.Time = cell.Text()
+				submission.Time = clean(cell.Text())
 
 			case 7:
-				submission.Memory = cell.Text()
+				submission.Memory = clean(cell.Text())
 			}
 		})
 
@@ -136,6 +139,13 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		return nil, err
 	}
 
+	if p.MustInfo().URL != link {
+		p.Close()
+		// An unexpected redirect occurred.
+		// Return error notification.
+		return nil, handleErrMsg(p.MustElement(`#jGrowl .message`))
+	}
+
 	// Wait till alls rows are loaded.
 	p.MustWaitLoad()
 
@@ -148,43 +158,45 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 		defer close(chanSubmissions)
 
 		// Only one page to parse. Keep parsing till all verdicts are declared.
-		for timer := time.Now(); pageCount == 1; time.Sleep(time.Millisecond * 400) {
-			// Keep parsing verdict till
-			// all submission verdicts are finalised.
-			submissions, _ := p.getSubmissions(arg)
-			chanSubmissions <- submissions
+		if pageCount == 1 {
+			for timer := time.Now(); ; time.Sleep(time.Millisecond * 400) {
+				// Keep parsing verdict till
+				// all submission verdicts are finalised.
+				submissions, _ := p.getSubmissions(arg)
+				chanSubmissions <- submissions
 
-			IsJudging := false
-			for _, sub := range submissions {
-				IsJudging = (IsJudging || sub.IsJudging)
+				IsJudging := false
+				for _, sub := range submissions {
+					IsJudging = (IsJudging || sub.IsJudging)
+				}
+				if !IsJudging {
+					break
+				}
+
+				if time.Since(timer) > 2*time.Second {
+					// Reload the page every 2 seconds.
+					// This is to handle websocket failure
+					// and completion of judgement in WA case.
+					p.MustReload().MustWaitLoad()
+					timer = time.Now()
+				}
 			}
-			if !IsJudging {
-				break
+		} else {
+			// Parse each page (without waiting for judgement to complete).
+			for ; pageCount > 0; pageCount-- {
+				// Ignore error, write whatever is parsed.
+				submissions, _ := p.getSubmissions(arg)
+				chanSubmissions <- submissions
+
+				if !p.MustHasR(`.pagination li>a`, `→`) || pageCount == 1 {
+					// All pages parsed.
+					break
+				}
+
+				// Move to the next page (click the next button).
+				p.MustElementR(`.pagination li>a`, `→`).MustClick().WaitInvisible()
+				p.WaitLoad()
 			}
-
-			if time.Since(timer) > 2*time.Second {
-				// Reload the page every 2 seconds.
-				// This is to handle websocket failure
-				// and completion of judgement in WA case.
-				p.MustReload().MustWaitLoad()
-				timer = time.Now()
-			}
-		}
-
-		// Parse each page (without waiting for judgement to complete).
-		for ; pageCount > 0; pageCount-- {
-			// Ignore error, write whatever is parsed.
-			submissions, _ := p.getSubmissions(arg)
-			chanSubmissions <- submissions
-
-			if !p.MustHasR(`.pagination li>a`, `→`) || pageCount == 1 {
-				// All pages parsed.
-				break
-			}
-
-			// Move to the next page (click the next button).
-			p.MustElementR(`.pagination li>a`, `→`).MustClick().WaitInvisible()
-			p.WaitLoad()
 		}
 	}()
 	return chanSubmissions, nil
@@ -206,6 +218,12 @@ func (sub Submission) GetSourceCode() (string, error) {
 	if _, err := p.Race().Element(`#jGrowl .message`).Handle(handleErrMsg).
 		Element(`#program-source-text`).Do(); err != nil {
 		return "", err
+	}
+
+	if p.MustInfo().URL != link {
+		// An unexpected redirect occurred.
+		// Return error notification.
+		return "", handleErrMsg(p.MustElement(`#jGrowl .message`))
 	}
 
 	sourceCode := p.MustEval(`Codeforces.filterClipboardText(

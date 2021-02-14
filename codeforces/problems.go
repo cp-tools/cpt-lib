@@ -105,6 +105,12 @@ func (arg Args) GetProblems() ([]Problem, error) {
 		return nil, err
 	}
 
+	if p.MustInfo().URL != link {
+		// An unexpected redirect occurred.
+		// Return error notification.
+		return nil, handleErrMsg(p.MustElement(`#jGrowl .message`))
+	}
+
 	// Wait till all problems have loaded.
 	p.WaitLoad()
 
@@ -147,6 +153,13 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 		Element(`#footer`).Do(); err != nil {
 		p.Close()
 		return nil, err
+	}
+
+	if p.MustInfo().URL != link {
+		p.Close()
+		// An unexpected redirect occurred.
+		// Return error notification.
+		return nil, handleErrMsg(p.MustElement(`#jGrowl .message`))
 	}
 
 	// Check if user is logged in.
