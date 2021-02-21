@@ -13,7 +13,7 @@ import (
 func NewBrowser(headless bool, userDataDir, bin, cacheDir string) (*rod.Browser, error) {
 	// Launch browser.
 	launchBrowser := func(controlURL string) (*rod.Browser, error) {
-		b := rod.New().ControlURL(controlURL)
+		b := rod.New().ControlURL(controlURL).NoDefaultDevice()
 		if err := b.Connect(); err != nil {
 			return nil, err
 		}
