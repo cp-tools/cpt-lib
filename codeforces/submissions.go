@@ -1,7 +1,6 @@
 package codeforces
 
 import (
-	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -96,11 +95,6 @@ func (p *page) getSubmissions(arg Args) ([]Submission, error) {
 				if v, ok := verdictMap[verdictStatus]; ok {
 					submission.VerdictStatus = v
 					submission.IsJudging = false
-				} else if strings.Contains(submission.Verdict, "Compilation error") {
-					// Compilation error verdict is updated only on page reload.
-					// Resorted to manually handling this bug on codeforces.
-					submission.VerdictStatus = VerdictCE
-					submission.IsJudging = false
 				} else {
 					submission.IsJudging = true
 				}
@@ -178,8 +172,10 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 				if !IsJudging {
 					break
 				}
-
-				time.Sleep(time.Millisecond * 400)
+				// Wait for atleast 1.5 seconds before parsing again.
+				timer := time.Now()
+				p.MustReload().WaitLoad()
+				time.Sleep(time.Millisecond*1500 - time.Since(timer))
 			}
 		} else {
 			// Parse each page (without waiting for judgement to complete).

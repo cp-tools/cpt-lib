@@ -199,7 +199,7 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 		defer p.Close()
 		defer close(chanSubmission)
 
-		for timer := time.Now(); ; time.Sleep(time.Millisecond * 400) {
+		for true {
 			submissions, _ := p.getSubmissions(arg)
 			if len(submissions) == 0 {
 				break
@@ -210,13 +210,10 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 				break
 			}
 
-			if time.Since(timer) > 2*time.Second {
-				// Reload the page every 2 seconds.
-				// This is to handle websocket failure
-				// and completion of judgement in WA case.
-				p.MustReload().MustWaitLoad()
-				timer = time.Now()
-			}
+			// Wait for atleast 1.5 seconds before parsing again.
+			timer := time.Now()
+			p.MustReload().WaitLoad()
+			time.Sleep(time.Millisecond*1500 - time.Since(timer))
 		}
 	}()
 
