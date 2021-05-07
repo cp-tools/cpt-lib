@@ -58,7 +58,7 @@ func NewBrowser(headless bool, userDataDir, bin, cacheDir string) (*rod.Browser,
 		}
 		defer cookiesBrowser.Close()
 		// Copy cookies of user.
-		Browser.MustSetCookies(cookiesBrowser.MustGetCookies())
+		Browser.MustSetCookies(cookiesBrowser.MustGetCookies()...)
 	}
 
 	return Browser, nil
