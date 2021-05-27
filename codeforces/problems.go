@@ -32,9 +32,9 @@ type (
 
 // Different values of 'SolveStatus'.
 const (
-	SolveAccepted     = 1
-	SolveRejected     = 0
-	SolveNotAttempted = -1
+	SolveNotAttempted = iota - 1
+	SolveRejected
+	SolveAccepted
 )
 
 func (p *page) getProblems(arg Args) ([]Problem, error) {
@@ -199,7 +199,7 @@ func (arg Args) SubmitSolution(langName string, file string) (<-chan Submission,
 		defer p.Close()
 		defer close(chanSubmission)
 
-		for true {
+		for {
 			submissions, _ := p.getSubmissions(arg)
 			if len(submissions) == 0 {
 				break

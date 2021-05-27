@@ -36,10 +36,10 @@ type (
 
 // Contest registration status.
 const (
-	RegistrationClosed    = 0
-	RegistrationOpen      = 1
-	RegistrationDone      = 2
-	RegistrationNotExists = -1
+	RegistrationNotExists = iota - 1
+	RegistrationClosed
+	RegistrationOpen
+	RegistrationDone
 )
 
 func (p *page) getCountdown() (time.Duration, error) {

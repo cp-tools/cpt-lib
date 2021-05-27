@@ -25,22 +25,20 @@ type (
 
 // Submissions verdict status.
 const (
-	VerdictAC = 1 // Accepted
+	VerdictAC   = iota + 1 // Accepted
+	VerdictWA              // Wrong Answer
+	_                      //
+	VerdictRTE             // Run Time Error
+	VerdictCE              // Compilation Error
+	VerdictTLE             // Time Limit Exceeded
+	VerdictMLE             // Memory Limit Exceeded
+	VerdictILE             // Idleness Limit Exceeded
+	VerdictDOJ             // Denial Of Judgement
+	VerdictSkip            // Skipped
+	VerdictHack            // Hacked
 
-	VerdictWA  = 2 // Wrong Answer
-	VerdictRTE = 4 // Run Time Error
-
-	VerdictCE  = 5 // Compilation Error
-	VerdictTLE = 6 // Time Limit Exceeded
-	VerdictMLE = 7 // Memory Limit Exceeded
-	VerdictILE = 8 // Idleness Limit Exceeded
-
-	VerdictDOJ  = 9  // Denial Of Judgement
-	VerdictSkip = 10 // Skipped
-	VerdictHack = 11 // Hacked
-
-	// Depreciated. Use VerdictAC instead.
-	VerdictPretestPass = 12 // Pretests passed
+	// Depreciated: Use VerdictAC instead.
+	VerdictPretestPass // Pretests passed
 )
 
 func (p *page) getSubmissions(arg Args) ([]Submission, error) {
@@ -159,7 +157,7 @@ func (arg Args) GetSubmissions(handle string, pageCount uint) (<-chan []Submissi
 
 		// Only one page to parse. Keep parsing till all verdicts are declared.
 		if pageCount == 1 {
-			for true {
+			for {
 				// Keep parsing verdict till
 				// all submission verdicts are finalised.
 				submissions, _ := p.getSubmissions(arg)
